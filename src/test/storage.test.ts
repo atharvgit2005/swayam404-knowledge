@@ -134,4 +134,72 @@ describe('Storage & Import/Export Engine', () => {
     expect(Array.isArray(backup.courses)).toBe(true);
     expect(Array.isArray(backup.questions)).toBe(true);
   });
+
+  it('persists course selections and questions across simulated extension restarts', async () => {
+    await StorageService.setSelectedCourseId('course-ent-201');
+    const selectedBefore = await StorageService.getSelectedCourseId();
+    expect(selectedBefore).toBe('course-ent-201');
+
+    // Add a question
+    await StorageService.saveQuestion({
+      id: 'restart-q',
+      courseId: 'course-ent-201',
+      questionText: 'Test Persistence',
+      questionType: 'single-choice',
+      correctOptions: ['Option A'],
+      reviewStatus: 'verified',
+      source: 'Test',
+      createdAt: '2026-01-01',
+      updatedAt: '2026-01-01',
+    });
+
+    // Simulate extension restart (re-invoking StorageService)
+    const selectedAfter = await StorageService.getSelectedCourseId();
+    expect(selectedAfter).toBe('course-ent-201');
+
+    const questions = await StorageService.getQuestions('course-ent-201');
+    expect(questions.some((q) => q.id === 'restart-q')).toBe(true);
+  });
+
+  it('replaces only the target course bank in replace mode leaving other courses intact', async () => {
+    // Add question to Course A (Economics)
+    await StorageService.saveQuestion({
+      id: 'econ-keep',
+      courseId: 'course-econ-101',
+      questionText: 'Econ question to preserve',
+      questionType: 'single-choice',
+      correctOptions: ['Keep me'],
+      reviewStatus: 'verified',
+      source: 'Econ',
+      createdAt: '2026-01-01',
+      updatedAt: '2026-01-01',
+    });
+
+    // Replace Course B (Entrepreneurship)
+    const replacePayload = {
+      version: '1.0.0',
+      courses: [{ id: 'course-ent-201', name: 'Entrepreneurship' }],
+      questions: [
+        {
+          id: 'ent-new',
+          courseId: 'course-ent-201',
+          questionText: 'Brand new Ent question',
+          questionType: 'single-choice',
+          correctOptions: ['New Ent'],
+        },
+      ],
+    };
+
+    const validated = await ImportExportService.validateImportPayload(replacePayload, 'course-ent-201');
+    await ImportExportService.executeImport(validated, 'replace', 'course-ent-201');
+
+    // Verify Course A was NOT wiped out
+    const econQuestions = await StorageService.getQuestions('course-econ-101');
+    expect(econQuestions.some((q) => q.id === 'econ-keep')).toBe(true);
+
+    // Verify Course B has only the replaced question
+    const entQuestions = await StorageService.getQuestions('course-ent-201');
+    expect(entQuestions.length).toBe(1);
+    expect(entQuestions[0].id).toBe('ent-new');
+  });
 });

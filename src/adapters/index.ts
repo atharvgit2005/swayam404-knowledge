@@ -36,13 +36,20 @@ export function dispatchSafeInputEvents(element: HTMLElement, value?: string): v
 }
 
 /**
- * Safely clicks an input (like radio or checkbox) with proper event bubbling
+ * Safely clicks an input (like radio or checkbox) with proper event bubbling and React tracker support
  */
 export function dispatchSafeClick(input: HTMLInputElement): void {
-  input.checked = true;
+  const prototype = Object.getPrototypeOf(input);
+  const nativeSetter = Object.getOwnPropertyDescriptor(prototype, 'checked')?.set;
+  if (nativeSetter) {
+    nativeSetter.call(input, true);
+  } else {
+    input.checked = true;
+  }
+
   input.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-  input.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
   input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+  input.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
 }
 
 function safeCssEscape(str: string): string {
@@ -56,7 +63,19 @@ function safeCssEscape(str: string): string {
  * Extracts visible label text associated with an input element
  */
 export function getAssociatedLabelText(input: HTMLElement, container: HTMLElement): string {
-  // 1. Check <label for="inputId">
+  // 1. Check native labels property
+  const inputEl = input as HTMLInputElement;
+  if (inputEl.labels && inputEl.labels.length > 0) {
+    for (let i = 0; i < inputEl.labels.length; i++) {
+      const lbl = inputEl.labels[i];
+      const clone = lbl.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll('input, select, textarea').forEach((el) => el.remove());
+      const txt = clone.textContent?.trim();
+      if (txt) return txt;
+    }
+  }
+
+  // 2. Check <label for="inputId">
   if (input.id) {
     const doc = input.ownerDocument || document;
     const label = doc.querySelector(`label[for="${safeCssEscape(input.id)}"]`);
@@ -65,7 +84,7 @@ export function getAssociatedLabelText(input: HTMLElement, container: HTMLElemen
     }
   }
 
-  // 2. Check enclosing <label>
+  // 3. Check enclosing <label>
   const parentLabel = input.closest('label');
   if (parentLabel && parentLabel.textContent?.trim()) {
     // Clone to remove input text itself if present
@@ -77,7 +96,7 @@ export function getAssociatedLabelText(input: HTMLElement, container: HTMLElemen
     }
   }
 
-  // 3. Check aria-labelledby or aria-label
+  // 4. Check aria-labelledby or aria-label
   const ariaLabelledby = input.getAttribute('aria-labelledby');
   if (ariaLabelledby) {
     const doc = input.ownerDocument || document;
@@ -87,13 +106,13 @@ export function getAssociatedLabelText(input: HTMLElement, container: HTMLElemen
   const ariaLabel = input.getAttribute('aria-label');
   if (ariaLabel?.trim()) return ariaLabel.trim();
 
-  // 4. Check adjacent sibling or parent span
+  // 5. Check adjacent sibling or parent span
   const nextSib = input.nextElementSibling;
   if (nextSib && (nextSib.tagName === 'SPAN' || nextSib.tagName === 'LABEL' || nextSib.tagName === 'P')) {
     if (nextSib.textContent?.trim()) return nextSib.textContent.trim();
   }
 
-  // 5. Parent row text
+  // 6. Parent row text
   const parentRow = input.closest('.option-row, .choice, .gcb-option, li, div');
   if (parentRow && parentRow !== container) {
     const clone = parentRow.cloneNode(true) as HTMLElement;
@@ -146,20 +165,46 @@ export class SwayamPortalAdapter implements ISiteAdapter {
       }
     }
 
-    // Fallback: If no distinct containers found, find form groups or all radio/checkbox groups
+    // Fallback: If no distinct classes found, group by fieldsets or lowest common ancestor of input groups
     if (containers.length === 0) {
-      const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="radio"], input[type="checkbox"], input[type="text"], textarea'));
-      const groupMap = new Map<string, HTMLElement[]>();
-
-      for (const inp of inputs) {
-        const groupKey = inp.name || inp.id || 'group';
-        const parent = (inp.closest('form, div, section') as HTMLElement) || document.body;
-        if (!groupMap.has(groupKey)) {
-          groupMap.set(groupKey, []);
+      const fieldsets = Array.from(document.querySelectorAll<HTMLElement>('fieldset'));
+      if (fieldsets.length > 0) {
+        containers = fieldsets;
+      } else {
+        const inputs = Array.from(
+          document.querySelectorAll<HTMLInputElement>(
+            'input[type="radio"], input[type="checkbox"], input[type="text"], textarea'
+          )
+        );
+        const nameGroups = new Map<string, HTMLInputElement[]>();
+        for (const inp of inputs) {
+          const key = inp.name || inp.id || `anon-${Math.random()}`;
+          if (!nameGroups.has(key)) nameGroups.set(key, []);
+          nameGroups.get(key)!.push(inp);
         }
-        groupMap.get(groupKey)?.push(parent);
+
+        const discovered = new Set<HTMLElement>();
+        for (const group of nameGroups.values()) {
+          if (group.length === 1) {
+            const p = (group[0].closest('.question, .problem, li, tr, div') as HTMLElement) || group[0].parentElement || document.body;
+            discovered.add(p);
+          } else {
+            let parent = group[0].parentElement;
+            while (parent && parent !== document.body && parent.tagName !== 'FORM') {
+              if (group.every((item) => parent!.contains(item))) {
+                break;
+              }
+              parent = parent.parentElement;
+            }
+            if (parent && parent !== document.body && parent.tagName !== 'FORM') {
+              discovered.add(parent);
+            } else {
+              discovered.add(group[0].parentElement || document.body);
+            }
+          }
+        }
+        containers = Array.from(discovered);
       }
-      containers = Array.from(new Set(Array.from(groupMap.values()).map((arr) => arr[0])));
     }
 
     let questionIdx = 1;
@@ -327,7 +372,9 @@ export class SwayamPortalAdapter implements ISiteAdapter {
           };
         }
 
-        const input = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(opt.inputSelector);
+        const input =
+          ((opt.id ? document.getElementById(opt.id) : null) as HTMLInputElement | HTMLTextAreaElement | null) ||
+          document.querySelector<HTMLInputElement | HTMLTextAreaElement>(opt.inputSelector);
         if (!input || input.disabled) {
           return {
             questionId,
@@ -360,7 +407,9 @@ export class SwayamPortalAdapter implements ISiteAdapter {
           continue;
         }
 
-        const control = document.querySelector<HTMLInputElement | HTMLSelectElement>(matchedOpt.inputSelector);
+        const control =
+          ((matchedOpt.id ? document.getElementById(matchedOpt.id) : null) as HTMLInputElement | HTMLSelectElement | null) ||
+          document.querySelector<HTMLInputElement | HTMLSelectElement>(matchedOpt.inputSelector);
         if (!control || control.disabled) {
           continue;
         }

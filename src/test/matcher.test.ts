@@ -181,4 +181,27 @@ describe('Layered Question Matching Engine', () => {
     expect(match).toBeDefined();
     expect(match?.id).toBe('1');
   });
+
+  it('flags ambiguous match when negation terms (not/except) are inverted', () => {
+    // Bank has: "Which curve represents the trade-off between inflation and unemployment?"
+    // Page has: "Which curve does NOT represent the trade-off between inflation and unemployment?"
+    const scannedNegation: ScannedQuestion = {
+      id: 'q-negation',
+      index: 5,
+      questionText: 'Which curve does NOT represent the trade-off between inflation and unemployment?',
+      questionType: 'single-choice',
+      formType: 'radio',
+      options: [
+        { id: 'o-1', text: 'Phillips Curve' },
+        { id: 'o-2', text: 'Laffer Curve' },
+      ],
+    };
+
+    const econBank = sampleBank.filter((r) => r.courseId === 'course-econ-101');
+    const result = matchQuestion(scannedNegation, econBank);
+
+    expect(result.status).toBe('ambiguous-match');
+    expect(result.reasons.some((r) => r.includes('Negation difference'))).toBe(true);
+    expect(result.isApproved).toBe(false);
+  });
 });

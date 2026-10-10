@@ -159,4 +159,95 @@ describe('Site Adapter & Local Assignment Fixtures Integration', () => {
     const cacInput = document.querySelector<HTMLInputElement>('#ent_q5_text');
     expect(cacInput?.value).toBe('CAC');
   });
+
+  it('triggers React controlled input event listeners with native value tracking', () => {
+    document.body.innerHTML = `
+      <div data-question-id="q-react">
+        <div class="qt-question-text">Test React Controlled Input</div>
+        <input type="text" id="react-input" value="" />
+      </div>
+    `;
+
+    const input = document.getElementById('react-input') as HTMLInputElement;
+    let reactState = '';
+    let changeFired = false;
+    let inputFired = false;
+
+    input.addEventListener('input', (e) => {
+      inputFired = true;
+      reactState = (e.target as HTMLInputElement).value;
+    });
+    input.addEventListener('change', () => {
+      changeFired = true;
+    });
+
+    const target: PopulationTarget = {
+      questionId: 'q-react',
+      questionText: 'Test React Controlled Input',
+      questionType: 'short-text',
+      selectedAnswers: ['Controlled Value 123'],
+      options: [{ id: 'react-input', text: 'Short Text Input', inputSelector: '#react-input' }],
+    };
+
+    const res = adapter.populateQuestion(document, target);
+    expect(res.success).toBe(true);
+    expect(input.value).toBe('Controlled Value 123');
+    expect(inputFired).toBe(true);
+    expect(changeFired).toBe(true);
+    expect(reactState).toBe('Controlled Value 123');
+  });
+
+  it('reports failure accurately when targeted input control is disabled or missing', () => {
+    document.body.innerHTML = `
+      <div data-question-id="q-disabled">
+        <div class="qt-question-text">Disabled Question</div>
+        <input type="text" id="disabled-input" disabled value="" />
+      </div>
+    `;
+
+    const target: PopulationTarget = {
+      questionId: 'q-disabled',
+      questionText: 'Disabled Question',
+      questionType: 'short-text',
+      selectedAnswers: ['Attempted Value'],
+      options: [{ id: 'disabled-input', text: 'Short Text Input', inputSelector: '#disabled-input' }],
+    };
+
+    const res = adapter.populateQuestion(document, target);
+    expect(res.success).toBe(false);
+    expect(res.message).toContain('disabled');
+  });
+
+  it('proves submit event listener is never invoked even with active form submission buttons', () => {
+    document.body.innerHTML = econHtml;
+    const form = document.getElementById('assignment-form') as HTMLFormElement;
+    let formSubmitCount = 0;
+    form.addEventListener('submit', () => {
+      formSubmitCount++;
+    });
+
+    const submitBtn = document.getElementById('final-submit-btn') as HTMLButtonElement;
+    let buttonClickCount = 0;
+    submitBtn.addEventListener('click', () => {
+      buttonClickCount++;
+    });
+
+    // Run scan
+    const scanned = adapter.scanQuestions(document);
+    expect(scanned.length).toBeGreaterThan(0);
+
+    // Run populate
+    const target: PopulationTarget = {
+      questionId: scanned[0].id,
+      questionText: scanned[0].questionText,
+      questionType: scanned[0].questionType,
+      selectedAnswers: [scanned[0].options[0].text],
+      options: scanned[0].options,
+    };
+    adapter.populateQuestion(document, target);
+
+    // Both listeners must have strictly 0 invocations
+    expect(formSubmitCount).toBe(0);
+    expect(buttonClickCount).toBe(0);
+  });
 });

@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "swayam404 — SWAYAM Assignment Assistant",
+  "version": "1.0.0",
+  "description": "Smart, student-controlled assignment assistant for SWAYAM courses. Review, verify, and populate approved answers with zero auto-submission.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "https://*.swayam.gov.in/*",
+    "https://swayam.gov.in/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    },
+    "default_title": "swayam404 Assistant"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.swayam.gov.in/*",
+        "https://swayam.gov.in/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}

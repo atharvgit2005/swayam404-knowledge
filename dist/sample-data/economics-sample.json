@@ -1,0 +1,99 @@
+{
+  "version": "1.0.0",
+  "app": "swayam404",
+  "exportedAt": "2026-03-01T10:00:00.000Z",
+  "note": "SAMPLE FICTIONAL DATA FOR TESTING - NOT VERIFIED EXAM MATERIAL",
+  "courses": [
+    {
+      "id": "course-econ-101",
+      "name": "Economics (Common Course)",
+      "externalCourseId": "SWAYAM-ECON-CORE",
+      "description": "Shared core course for micro/macroeconomics assignments"
+    }
+  ],
+  "questions": [
+    {
+      "id": "sample-econ-1",
+      "courseId": "course-econ-101",
+      "questionText": "What happens to the demand curve of a normal good when consumer income increases?",
+      "questionType": "single-choice",
+      "options": [
+        "Shifts to the left",
+        "Shifts to the right",
+        "Remains unchanged",
+        "Becomes perfectly inelastic"
+      ],
+      "correctOptions": [
+        "Shifts to the right"
+      ],
+      "explanation": "For normal goods, an increase in consumer income increases purchasing power, shifting the demand curve to the right.",
+      "reviewStatus": "verified",
+      "source": "Sample Economics Question Bank"
+    },
+    {
+      "id": "sample-econ-2",
+      "courseId": "course-econ-101",
+      "questionText": "Which market structure is characterized by a single seller, high barriers to entry, and no close substitutes?",
+      "questionType": "single-choice",
+      "options": [
+        "Monopolistic competition",
+        "Oligopoly",
+        "Monopoly",
+        "Perfect competition"
+      ],
+      "correctOptions": [
+        "Monopoly"
+      ],
+      "explanation": "A pure monopoly exists when one firm produces all output in a market with prohibitive entry barriers.",
+      "reviewStatus": "verified",
+      "source": "Sample Economics Question Bank"
+    },
+    {
+      "id": "sample-econ-3",
+      "courseId": "course-econ-101",
+      "questionText": "Which of the following are components of aggregate demand in macroeconomics?",
+      "questionType": "multiple-choice",
+      "options": [
+        "Consumer consumption (C)",
+        "Investment expenditure (I)",
+        "Government spending (G)",
+        "Net exports (X - M)"
+      ],
+      "correctOptions": [
+        "Consumer consumption (C)",
+        "Investment expenditure (I)",
+        "Government spending (G)",
+        "Net exports (X - M)"
+      ],
+      "explanation": "Aggregate demand is represented by AD = C + I + G + (X - M).",
+      "reviewStatus": "verified",
+      "source": "Sample Economics Question Bank"
+    },
+    {
+      "id": "sample-econ-4",
+      "courseId": "course-econ-101",
+      "questionText": "Fiscal policy involves government decisions regarding taxation and public spending.",
+      "questionType": "true-false",
+      "options": [
+        "True",
+        "False"
+      ],
+      "correctOptions": [
+        "True"
+      ],
+      "explanation": "Fiscal policy is set by government via budget appropriations and tax adjustments.",
+      "reviewStatus": "verified",
+      "source": "Sample Economics Question Bank"
+    },
+    {
+      "id": "sample-econ-5",
+      "courseId": "course-econ-101",
+      "questionText": "State the economic term for the cost of the next best alternative given up when making a choice.",
+      "questionType": "short-text",
+      "answerText": "Opportunity cost",
+      "explanation": "Opportunity cost quantifies the forgone benefit of the second-best option.",
+      "reviewStatus": "verified",
+      "source": "Sample Economics Question Bank"
+    }
+  ]
+}

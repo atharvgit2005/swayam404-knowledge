@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   ArrowRight,
+  Zap,
+  BookOpen,
 } from 'lucide-react';
 
 interface DashboardTabProps {
@@ -316,7 +318,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               gap: '6px',
             }}
           >
-            <span>⚡ Course Progress</span>
+            <Zap size={13} />
+            <span>Course Progress</span>
           </button>
         )}
 
@@ -335,7 +338,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             gap: '6px',
           }}
         >
-          <span>📚 Answer Bank ({questionCount})</span>
+          <BookOpen size={13} />
+          <span>Answer Bank ({questionCount})</span>
         </button>
       </section>
 

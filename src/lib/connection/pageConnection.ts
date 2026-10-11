@@ -150,13 +150,22 @@ export class PageConnectionService {
     }
 
     const url = tabCheck.url || '';
-    const isChatGpt = /chatgpt\.com|claude\.ai/i.test(url);
+    const isWebAi = /chatgpt\.com|claude\.ai|gemini\.google\.com/i.test(url);
+    const webAiProvider: 'chatgpt' | 'claude' | 'gemini' | undefined = /claude\.ai/i.test(url)
+      ? 'claude'
+      : /gemini\.google\.com/i.test(url)
+      ? 'gemini'
+      : /chatgpt\.com/i.test(url)
+      ? 'chatgpt'
+      : undefined;
     const isSwayam = tabCheck.isSupported;
 
-    if (isChatGpt) {
+    if (isWebAi) {
       return {
         isSwayam: false,
         isChatGpt: true,
+        isWebAi: true,
+        webAiProvider,
         isSupported: true,
         url,
         tabTitle: tabCheck.tab.title,
@@ -168,6 +177,7 @@ export class PageConnectionService {
       return {
         isSwayam: false,
         isChatGpt: false,
+        isWebAi: false,
         isSupported: false,
         url,
         tabTitle: tabCheck.tab.title,
@@ -200,12 +210,15 @@ export class PageConnectionService {
           return {
             isSwayam: true,
             isChatGpt: false,
+            isWebAi: false,
             isSupported: true,
             url,
             tabTitle: tabCheck.tab.title,
             detectedCourseTitle: pong.detectedCourseTitle,
             detectedAssignmentTitle: pong.detectedAssignmentTitle || pong.title,
             detectedExternalId: pong.detectedExternalId,
+            userSessionId: pong.userSessionId,
+            userEmail: pong.userEmail,
             detectedWeek: pong.detectedWeek,
             detectedWeekNumber: pong.detectedWeekNumber,
             isAlreadySubmitted: pong.isAlreadySubmitted,

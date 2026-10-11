@@ -95,6 +95,88 @@ describe('Failure Points, Week Identification & Internet Issue Identifier', () =
       expect(week.weekNumber).toBe(9);
       expect(week.formattedWeek).toBe('Week 9');
     });
+
+    it('correctly ignores collapsed Week 0 in sidebar when Week 6 is expanded', () => {
+      document.body.innerHTML = `
+        <nav class="sidebar">
+          <button aria-controls="unit-112-list" aria-expanded="false">
+            <h3>Week 0</h3>
+          </button>
+          <div id="unit-112-list">
+            <button>Practice: Week 0: Assignment 0</button>
+          </div>
+          <button aria-controls="unit-6-list" aria-expanded="true">
+            <h3>Week 6</h3>
+          </button>
+          <div id="unit-6-list">
+            <button class="bg-sky-50 text-blue-600">Financial Consideration (7)</button>
+          </div>
+        </nav>
+      `;
+
+      const week = extractWeekInfo(document);
+      expect(week.weekNumber).toBe(6);
+      expect(week.formattedWeek).toBe('Week 6');
+    });
+
+    it('detects week from active sidebar item (Quiz: Week 06: Assignment 06)', () => {
+      document.body.innerHTML = `
+        <nav class="sidebar">
+          <button aria-controls="unit-112-list"><h3>Week 0</h3></button>
+          <button aria-controls="unit-6-list"><h3>Week 6</h3></button>
+          <div id="unit-6-list">
+            <button class="bg-sky-50 text-blue-600">Quiz: Week 06: Assignment 06</button>
+          </div>
+        </nav>
+        <main>
+          <h1>Assignment</h1>
+        </main>
+      `;
+
+      const week = extractWeekInfo(document);
+      expect(week.weekNumber).toBe(6);
+      expect(week.formattedWeek).toBe('Week 6');
+    });
+
+    it('maps URL unitId=27 to controlling week header in DOM', () => {
+      document.body.innerHTML = `
+        <nav class="sidebar">
+          <button aria-controls="unit-112-list"><h3>Week 0</h3></button>
+          <button aria-controls="unit-27-list"><h3>Week 6</h3></button>
+          <div id="unit-27-list">
+            <button>Lecture 1</button>
+          </div>
+        </nav>
+      `;
+
+      const week = extractWeekInfo(
+        document,
+        'https://onlinecourses.swayam2.ac.in/e-learning/course/ini26_cm22?unitId=27&assessmentId=119'
+      );
+      expect(week.weekNumber).toBe(6);
+      expect(week.formattedWeek).toBe('Week 6');
+    });
+
+    it('identifies Week 0 accurately when student is legitimately on Week 0 orientation', () => {
+      document.body.innerHTML = `
+        <nav class="sidebar">
+          <button aria-controls="unit-112-list" aria-expanded="true">
+            <h3>Week 0</h3>
+          </button>
+          <div id="unit-112-list">
+            <button class="bg-sky-50 text-blue-600">Practice: Week 0: Assignment 0</button>
+          </div>
+        </nav>
+      `;
+
+      const week = extractWeekInfo(document);
+      expect(week.weekNumber).toBe(0);
+      expect(week.formattedWeek).toBe('Week 0');
+
+      const identity = adapter.detectCourseIdentity(document);
+      expect(identity.detectedWeek).toBe('Week 0');
+      expect(identity.detectedWeekNumber).toBe(0);
+    });
   });
 
   describe('2. Assignment Already Done / Completed / Closed Detection', () => {

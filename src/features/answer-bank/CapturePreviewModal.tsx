@@ -6,6 +6,8 @@ import {
   Save,
   AlertCircle,
   Sparkles,
+  Check,
+  X,
 } from 'lucide-react';
 import { ContributionBuilder } from '@/lib/knowledge/contributionBuilder';
 import { ContributionProposal } from '@/types/knowledge';
@@ -103,9 +105,9 @@ export const CapturePreviewModal: React.FC<CapturePreviewModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: '#ffffff', fontWeight: 800, cursor: 'pointer', fontSize: '14px' }}
+            style={{ background: 'none', border: 'none', color: '#ffffff', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           >
-            ✕
+            <X size={14} />
           </button>
         </div>
 
@@ -129,17 +131,20 @@ export const CapturePreviewModal: React.FC<CapturePreviewModalProps> = ({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ padding: '2px 6px', background: '#1a1a1a', color: '#ffffff', fontFamily: 'var(--font-headline)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' }}>
-              ✓ {confirmedCount} Confirmed
+            <span style={{ padding: '2px 6px', background: '#1a1a1a', color: '#ffffff', fontFamily: 'var(--font-headline)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+              <Check size={10} />
+              <span>{confirmedCount} Confirmed</span>
             </span>
             {unverifiedCount > 0 && (
-              <span style={{ padding: '2px 6px', background: '#ffdad6', color: '#cc0000', border: '1px solid #cc0000', fontFamily: 'var(--font-headline)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' }}>
-                ! {unverifiedCount} Unverified
+              <span style={{ padding: '2px 6px', background: '#ffdad6', color: '#cc0000', border: '1px solid #cc0000', fontFamily: 'var(--font-headline)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                <AlertCircle size={10} />
+                <span>{unverifiedCount} Unverified</span>
               </span>
             )}
             {warningsCount > 0 && (
-              <span style={{ padding: '2px 6px', background: '#ffcc00', color: '#1a1a1a', border: '1px solid #1a1a1a', fontFamily: 'var(--font-headline)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' }}>
-                ⚠ {warningsCount} Warnings
+              <span style={{ padding: '2px 6px', background: '#ffcc00', color: '#1a1a1a', border: '1px solid #1a1a1a', fontFamily: 'var(--font-headline)', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                <AlertTriangle size={10} />
+                <span>{warningsCount} Warnings</span>
               </span>
             )}
           </div>
@@ -219,12 +224,14 @@ export const CapturePreviewModal: React.FC<CapturePreviewModalProps> = ({
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {isConfirmed ? (
-                        <span style={{ padding: '2px 6px', background: '#ffcc00', border: '1px solid #1a1a1a', fontFamily: 'var(--font-headline)', fontSize: '9px', fontWeight: 800, textTransform: 'uppercase' }}>
-                          ✓ Portal Confirmed
+                        <span style={{ padding: '2px 6px', background: '#ffcc00', border: '1px solid #1a1a1a', fontFamily: 'var(--font-headline)', fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          <Check size={9} />
+                          <span>Portal Confirmed</span>
                         </span>
                       ) : (
-                        <span style={{ padding: '2px 6px', background: '#ffdad6', color: '#cc0000', border: '1px solid #cc0000', fontFamily: 'var(--font-headline)', fontSize: '9px', fontWeight: 800, textTransform: 'uppercase' }}>
-                          ! Unverified
+                        <span style={{ padding: '2px 6px', background: '#ffdad6', color: '#cc0000', border: '1px solid #cc0000', fontFamily: 'var(--font-headline)', fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          <AlertCircle size={9} />
+                          <span>Unverified</span>
                         </span>
                       )}
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: '#4a4a4a' }}>

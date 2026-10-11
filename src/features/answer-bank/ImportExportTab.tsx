@@ -11,6 +11,8 @@ import {
   FileJson,
   Share2,
   BookOpen,
+  AlertTriangle,
+  XCircle,
 } from 'lucide-react';
 import { ContributionBuilder } from '@/lib/knowledge/contributionBuilder';
 import { ContributionProposal } from '@/types/knowledge';
@@ -309,17 +311,23 @@ export const ImportExportTab: React.FC<ImportExportTabProps> = ({
             </div>
 
             {validationResult.warnings.length > 0 && (
-              <div style={{ fontSize: '11px', color: '#1a1a1a', background: '#ffcc00', padding: '6px', border: '1px solid #1a1a1a', fontWeight: 600 }}>
+              <div style={{ fontSize: '11px', color: '#1a1a1a', background: '#ffcc00', padding: '6px', border: '1px solid #1a1a1a', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: '3px' }}>
                 {validationResult.warnings.map((w, i) => (
-                  <div key={i}>⚠️ {w}</div>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <AlertTriangle size={12} style={{ flexShrink: 0 }} />
+                    <span>{w}</span>
+                  </div>
                 ))}
               </div>
             )}
 
             {validationResult.errors.length > 0 && (
-              <div style={{ fontSize: '11px', color: '#cc0000', fontWeight: 700 }}>
+              <div style={{ fontSize: '11px', color: '#cc0000', fontWeight: 700, display: 'flex', flexDirection: 'column', gap: '3px' }}>
                 {validationResult.errors.map((e, i) => (
-                  <div key={i}>❌ {e}</div>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <XCircle size={12} style={{ flexShrink: 0 }} />
+                    <span>{e}</span>
+                  </div>
                 ))}
               </div>
             )}

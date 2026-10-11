@@ -1,5 +1,6 @@
 import { SwayamPortalAdapter } from '@/adapters';
 import { ChatGptBridgeService } from '@/lib/ai/chatgptBridge';
+import { StorageService } from '@/lib/storage';
 import {
   ExtensionMessage,
   ScanResultMessage,
@@ -39,6 +40,15 @@ if (!globalObj.__swayam404_installed) {
   // Deduplication state to prevent redundant runs within 10 seconds
   let lastProcessedSyncText = '';
   let lastProcessedTimestamp = 0;
+
+  const SVG_ICONS = {
+    zap: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+    check: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><polyline points="20 6 9 17 4 12"/></svg>',
+    download: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+    clock: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    close: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    shield: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  };
 
   /**
    * Neo-Brutalist In-Page Feedback Toast
@@ -81,9 +91,9 @@ if (!globalObj.__swayam404_installed) {
     title.innerHTML = `<span style="width:8px;height:8px;background:${accentColor};display:inline-block;border:1px solid #1a1a1a"></span>SWAYAM 404 • AUTO-PILOT`;
 
     const closeBtn = document.createElement('button');
-    closeBtn.textContent = '✕';
+    closeBtn.innerHTML = SVG_ICONS.close;
     closeBtn.style.cssText =
-      'background: none; border: none; font-weight: 800; cursor: pointer; font-size: 11px; color: #1a1a1a; padding: 0 4px;';
+      'background: none; border: none; font-weight: 800; cursor: pointer; color: #1a1a1a; padding: 0 4px; display: flex; align-items: center;';
     closeBtn.onclick = () => toast.remove();
 
     header.appendChild(title);
@@ -96,8 +106,8 @@ if (!globalObj.__swayam404_installed) {
     toast.appendChild(body);
 
     const footer = document.createElement('div');
-    footer.style.cssText = 'font-size: 10px; color: #555555; font-weight: 700; text-transform: uppercase;';
-    footer.textContent = '🛡️ Zero Auto-Submit: Review answers & click Submit';
+    footer.style.cssText = 'font-size: 10px; color: #555555; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 4px;';
+    footer.innerHTML = `${SVG_ICONS.shield} <span>Zero Auto-Submit: Review answers & click Submit</span>`;
     toast.appendChild(footer);
 
     document.body.appendChild(toast);
@@ -130,14 +140,14 @@ if (!globalObj.__swayam404_installed) {
     // 1. Scan questions from page
     const questions = adapter.scanQuestions(document);
     if (!questions || questions.length === 0) {
-      showInPageToast('⚠️ Answers received, but no assignment questions found on page.', 'error');
+      showInPageToast('Answers received, but no assignment questions found on page.', 'error');
       return null;
     }
 
     // 2. Parse answers via ChatGPT bridge parser
     const parsed = ChatGptBridgeService.parseResponse(answersText, questions);
     if (!parsed.success || parsed.matchedCount === 0) {
-      showInPageToast('⚠️ Web AI answers received, but 0 question options matched.', 'error');
+      showInPageToast('Web AI answers received, but 0 question options matched.', 'error');
       return null;
     }
 
@@ -166,7 +176,7 @@ if (!globalObj.__swayam404_installed) {
 
     // 4. In-page Toast Feedback
     showInPageToast(
-      `⚡ All ${succeeded} of ${questions.length} answers automatically marked! Review your choices and click "Submit" manually.`,
+      `All ${succeeded} of ${questions.length} answers automatically marked! Review your choices and click "Submit" manually.`,
       'success',
       10000
     );
@@ -258,15 +268,15 @@ if (!globalObj.__swayam404_installed) {
 
     if (identity.isAlreadySubmitted) {
       pill.style.background = '#dcfce7';
-      pill.innerHTML = `<span>📥</span> <span>Capture Answers (${weekLabel}Submitted)</span>`;
+      pill.innerHTML = `<span>${SVG_ICONS.download}</span> <span>Capture Answers (${weekLabel}Submitted)</span>`;
       pill.title = 'Assignment already submitted! Click to capture portal-confirmed answers into your answer bank.';
       pill.onclick = async () => {
         try {
-          pill.innerHTML = `<span>⏳</span> <span>Capturing Answers...</span>`;
+          pill.innerHTML = `<span>${SVG_ICONS.clock}</span> <span>Capturing Answers...</span>`;
           const feedbackData = adapter.captureAssignmentFeedback(document, window.location.href);
           if (!feedbackData.capturedRecords || feedbackData.capturedRecords.length === 0) {
-            showInPageToast('⚠️ No visible feedback or accepted answers found on page.', 'error');
-            pill.innerHTML = `<span>📥</span> <span>Capture Answers (${weekLabel}Submitted)</span>`;
+            showInPageToast('No visible feedback or accepted answers found on page.', 'error');
+            pill.innerHTML = `<span>${SVG_ICONS.download}</span> <span>Capture Answers (${weekLabel}Submitted)</span>`;
             return;
           }
           if (typeof chrome !== 'undefined' && chrome.storage?.local) {
@@ -287,6 +297,10 @@ if (!globalObj.__swayam404_installed) {
                   portalCourseTitle: identity.courseTitle,
                   externalCourseId: identity.externalId,
                   assignmentTitle: identity.assignmentTitle,
+                  week: identity.detectedWeek,
+                  weekNumber: StorageService.parseWeekNumber(identity.detectedWeek),
+                  userSessionId: identity.userSessionId,
+                  userEmail: identity.userEmail,
                   questionText: rec.questionText,
                   questionType: rec.questionType,
                   options: rec.options,
@@ -303,17 +317,17 @@ if (!globalObj.__swayam404_installed) {
               }
             }
             await chrome.storage.local.set({ swayam_questions: updatedList });
-            showInPageToast(`✓ Captured & saved ${addedCount} confirmed answers into your answer bank!`, 'success');
+            showInPageToast(`Captured & saved ${addedCount} confirmed answers into your answer bank!`, 'success');
           }
-          pill.innerHTML = `<span>✓</span> <span>Answers Captured!</span>`;
+          pill.innerHTML = `<span>${SVG_ICONS.check}</span> <span>Answers Captured!</span>`;
         } catch (err) {
           showInPageToast(`Error: ${(err as Error).message}`, 'error');
-          pill.innerHTML = `<span>📥</span> <span>Capture Answers</span>`;
+          pill.innerHTML = `<span>${SVG_ICONS.download}</span> <span>Capture Answers</span>`;
         }
       };
     } else {
-      pill.innerHTML = `<span>⚡</span> <span>1-Click Auto-Solve (${weekLabel}${questions.length} Qs)</span>`;
-      pill.title = 'Copies prompt, opens ChatGPT, solves, redirects back, and marks all radio buttons automatically!';
+      pill.innerHTML = `<span>${SVG_ICONS.zap}</span> <span>1-Click Auto-Solve (${weekLabel}${questions.length} Qs)</span>`;
+      pill.title = 'Copies prompt, opens Web AI, solves, redirects back, and marks all radio buttons automatically!';
 
       pill.onmouseenter = () => {
         pill.style.transform = 'translate(-1px, -1px)';
@@ -324,7 +338,7 @@ if (!globalObj.__swayam404_installed) {
 
       pill.onclick = async () => {
         try {
-          pill.innerHTML = `<span>⚡</span> <span>Scanning & Preparing...</span>`;
+          pill.innerHTML = `<span>${SVG_ICONS.clock}</span> <span>Scanning & Preparing...</span>`;
           const scanned = adapter.scanQuestions(document);
           const currentIdentity = adapter.detectCourseIdentity(document, window.location.href);
 
@@ -335,6 +349,12 @@ if (!globalObj.__swayam404_installed) {
           });
 
           await ChatGptBridgeService.copyToClipboard(promptText);
+
+          // Get active web AI provider
+          const settings = await StorageService.getSettings();
+          const provider = settings.webAiProvider || 'chatgpt';
+          const providerUrl = ChatGptBridgeService.getProviderUrl(provider);
+          const providerLabel = ChatGptBridgeService.getProviderLabel(provider);
 
           if (typeof chrome !== 'undefined' && chrome.storage?.local) {
             await chrome.storage.local.set({
@@ -350,19 +370,161 @@ if (!globalObj.__swayam404_installed) {
             });
           }
 
-          showInPageToast('⚡ Questions copied! Opening ChatGPT to solve...', 'info', 4000);
-          pill.innerHTML = `<span>⏳</span> <span>Solving in ChatGPT...</span>`;
+          showInPageToast(`Questions copied! Opening ${providerLabel} to solve...`, 'info', 4000);
+          pill.innerHTML = `<span>${SVG_ICONS.clock}</span> <span>Solving in ${providerLabel}...</span>`;
 
-          await ChatGptBridgeService.openChatGptTab('https://chatgpt.com/');
+          await ChatGptBridgeService.openWebAiTab(providerUrl);
         } catch (err) {
           showInPageToast(`Error: ${(err as Error).message}`, 'error');
-          pill.innerHTML = `<span>⚡</span> <span>1-Click Auto-Solve</span>`;
+          pill.innerHTML = `<span>${SVG_ICONS.zap}</span> <span>1-Click Auto-Solve</span>`;
         }
       };
     }
 
     document.body.appendChild(pill);
   }
+
+  // Course Completion Mode State & Mutation Observer
+  let courseCompletionModeActive = false;
+  let courseCompletionObserver: MutationObserver | null = null;
+  let completionReapplyTimeout: ReturnType<typeof setTimeout> | null = null;
+  let courseCompletionInterval: ReturnType<typeof setInterval> | null = null;
+  let activeApprovedTaskIds: string[] = [];
+
+  function enableCourseCompletionMode(approvedIds: string[] = [], isSilent = false) {
+    courseCompletionModeActive = true;
+    if (approvedIds.length > 0) {
+      activeApprovedTaskIds = Array.from(new Set([...activeApprovedTaskIds, ...approvedIds]));
+    }
+    console.log('[swayam404] Enabling Course Completion Mode: applying 100% checkmarks to whole course...');
+
+    // Save active state to storage so it persists across page reloads
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      chrome.storage.local.set({
+        courseCompletionModeActive: true,
+        approvedCourseTaskIds: activeApprovedTaskIds,
+      });
+    }
+
+    const result = adapter.applyCourseCompletionCheckmarks(document, activeApprovedTaskIds);
+
+    if (!isSilent) {
+      showInPageToast(
+        `Course Completion Mode ON: Marked ${result.appliedCount || 'all'} block(s) with green checkmarks! (100% Progress)`,
+        'success'
+      );
+    }
+
+    // Set up MutationObserver to re-apply whenever React/Angular re-renders the DOM
+    if (!courseCompletionObserver) {
+      courseCompletionObserver = new MutationObserver(() => {
+        if (!courseCompletionModeActive) return;
+        if (completionReapplyTimeout) clearTimeout(completionReapplyTimeout);
+        completionReapplyTimeout = setTimeout(() => {
+          adapter.applyCourseCompletionCheckmarks(document, activeApprovedTaskIds);
+        }, 150);
+      });
+      courseCompletionObserver.observe(document.body || document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    // Enforce at staggered intervals to survive client-side framework hydration on reload
+    [250, 600, 1200, 2500, 4000].forEach((delay) => {
+      setTimeout(() => {
+        if (courseCompletionModeActive) {
+          adapter.applyCourseCompletionCheckmarks(document, activeApprovedTaskIds);
+        }
+      }, delay);
+    });
+
+    if (courseCompletionInterval) clearInterval(courseCompletionInterval);
+    courseCompletionInterval = setInterval(() => {
+      if (courseCompletionModeActive) {
+        adapter.applyCourseCompletionCheckmarks(document, activeApprovedTaskIds);
+      }
+    }, 4000);
+
+    injectCourseCompletionPill();
+  }
+
+  function disableCourseCompletionMode() {
+    courseCompletionModeActive = false;
+    activeApprovedTaskIds = [];
+    console.log('[swayam404] Disabling Course Completion Mode...');
+    if (courseCompletionObserver) {
+      courseCompletionObserver.disconnect();
+      courseCompletionObserver = null;
+    }
+    if (courseCompletionInterval) {
+      clearInterval(courseCompletionInterval);
+      courseCompletionInterval = null;
+    }
+    adapter.removeCourseCompletionCheckmarks(document);
+    showInPageToast('Course Completion Mode turned OFF.', 'info', 3000);
+
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      chrome.storage.local.set({ courseCompletionModeActive: false, approvedCourseTaskIds: [] });
+    }
+
+    const pill = document.getElementById('swayam404-completion-pill');
+    if (pill) pill.remove();
+  }
+
+  function injectCourseCompletionPill() {
+    if (typeof document === 'undefined' || !document.body) return;
+    const existing = document.getElementById('swayam404-completion-pill');
+    if (existing) {
+      if (!courseCompletionModeActive) {
+        existing.remove();
+        return;
+      }
+      existing.innerHTML = `<span>${SVG_ICONS.check}</span> <span>Course Complete Mode (100%)</span>`;
+      return;
+    }
+    if (!courseCompletionModeActive) return;
+
+    const pill = document.createElement('div');
+    pill.id = 'swayam404-completion-pill';
+    pill.style.cssText = `
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      z-index: 9999998;
+      background: #dcfce7;
+      color: #14532d;
+      border: 2px solid #14532d;
+      box-shadow: 4px 4px 0px #14532d;
+      padding: 8px 14px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      user-select: none;
+      transition: transform 0.1s ease;
+    `;
+    pill.innerHTML = `<span>${SVG_ICONS.check}</span> <span>Course Complete Mode (100%)</span>`;
+    pill.title = 'Course Completion Mode is active (100% Progress). Click to toggle OFF.';
+    pill.onclick = () => {
+      disableCourseCompletionMode();
+    };
+    document.body.appendChild(pill);
+  }
+
+  // Restore Course Completion Mode state if enabled (silently on page load / reload)
+  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+    chrome.storage.local.get(['courseCompletionModeActive', 'approvedCourseTaskIds'], (res) => {
+      if (res?.courseCompletionModeActive) {
+        enableCourseCompletionMode(res?.approvedCourseTaskIds || [], true);
+      }
+    });
+  }
+
 
   // SPA navigation watcher to detect week or quiz switches immediately
   let lastObservedUrl = window.location.href;
@@ -482,11 +644,16 @@ if (!globalObj.__swayam404_installed) {
           let submissionStatus = undefined;
           let questionCount = 0;
 
+          let userSessionId: string | undefined = undefined;
+          let userEmail: string | undefined = undefined;
+
           try {
             const identity = adapter.detectCourseIdentity(document, window.location.href);
             detectedCourseTitle = identity.courseTitle;
             detectedAssignmentTitle = identity.assignmentTitle;
             detectedExternalId = identity.externalId;
+            userSessionId = identity.userSessionId;
+            userEmail = identity.userEmail;
             detectedWeek = identity.detectedWeek;
             detectedWeekNumber = identity.detectedWeekNumber;
             isAlreadySubmitted = Boolean(identity.isAlreadySubmitted);
@@ -509,6 +676,8 @@ if (!globalObj.__swayam404_installed) {
             detectedCourseTitle,
             detectedAssignmentTitle,
             detectedExternalId,
+            userSessionId,
+            userEmail,
             detectedWeek,
             detectedWeekNumber,
             isAlreadySubmitted,
@@ -534,6 +703,8 @@ if (!globalObj.__swayam404_installed) {
               pageTitle: identity.assignmentTitle || document.title,
               detectedCourseTitle: identity.courseTitle,
               detectedExternalId: identity.externalId,
+              userSessionId: identity.userSessionId,
+              userEmail: identity.userEmail,
               detectedUnitId: identity.unitId,
               detectedAssessmentId: identity.assessmentId,
               detectedAssignmentTitle: identity.assignmentTitle,
@@ -688,6 +859,136 @@ if (!globalObj.__swayam404_installed) {
             return true;
           }
         }
+
+        // 7. Course Completion Mode
+        if (message.type === 'SET_COURSE_COMPLETION_MODE') {
+          try {
+            if (message.enabled) {
+              enableCourseCompletionMode(message.approvedTaskIds || []);
+            } else {
+              disableCourseCompletionMode();
+            }
+            const res = adapter.applyCourseCompletionCheckmarks(document, activeApprovedTaskIds);
+            sendResponse({
+              type: 'COURSE_COMPLETION_RESULT',
+              success: true,
+              enabled: message.enabled,
+              appliedCount: res.appliedCount,
+              totalBlocks: res.totalBlocks,
+              pendingQuizzes: res.pendingQuizzes,
+            });
+          } catch (err) {
+            sendResponse({
+              type: 'COURSE_COMPLETION_RESULT',
+              success: false,
+              enabled: false,
+              appliedCount: 0,
+              totalBlocks: 0,
+              pendingQuizzes: 0,
+            });
+          }
+          return true;
+        }
+
+        if (message.type === 'APPLY_COURSE_COMPLETION_CHECKMARKS') {
+          try {
+            enableCourseCompletionMode(message.approvedTaskIds || []);
+            const res = adapter.applyCourseCompletionCheckmarks(document, activeApprovedTaskIds);
+            sendResponse({
+              type: 'COURSE_COMPLETION_RESULT',
+              success: true,
+              enabled: true,
+              appliedCount: res.appliedCount,
+              totalBlocks: res.totalBlocks,
+              pendingQuizzes: res.pendingQuizzes,
+            });
+          } catch (err) {
+            sendResponse({
+              type: 'COURSE_COMPLETION_RESULT',
+              success: false,
+              enabled: false,
+              appliedCount: 0,
+              totalBlocks: 0,
+              pendingQuizzes: 0,
+            });
+          }
+          return true;
+        }
+
+        if (message.type === 'APPROVE_AND_SOLVE_TASK') {
+          (async () => {
+            try {
+              const taskId = message.taskId;
+              activeApprovedTaskIds = Array.from(new Set([...activeApprovedTaskIds, taskId]));
+
+              // Mark item in outline if present
+              const outlineItem =
+                document.getElementById(taskId) ||
+                Array.from(document.querySelectorAll('button, a')).find((el) =>
+                  el.textContent?.includes(message.taskTitle || '')
+                );
+              if (outlineItem) {
+                outlineItem.setAttribute('data-swayam404-approved', 'true');
+              }
+
+              // Scan and populate questions on the active page if present
+              const scanned = adapter.scanQuestions(document);
+              let populatedCount = 0;
+              if (scanned.length > 0) {
+                const currentQuestions = (await new Promise<any[]>((resolve) => {
+                  chrome.storage.local.get(['swayam_questions'], (res) => resolve(res?.swayam_questions || []));
+                })) || [];
+
+                for (const q of scanned) {
+                  const match = currentQuestions.find(
+                    (cq) =>
+                      cq.questionText &&
+                      q.questionText &&
+                      (cq.questionText.trim().toLowerCase() === q.questionText.trim().toLowerCase() ||
+                        cq.questionText.toLowerCase().includes(q.questionText.toLowerCase().slice(0, 30)))
+                  );
+                  const answersToUse =
+                    match?.correctOptions ||
+                    match?.acceptedAnswers ||
+                    (q.options.length > 0 ? [q.options[0].text] : []);
+                  if (answersToUse.length > 0) {
+                    const pop = adapter.populateQuestion(document, {
+                      questionId: q.id,
+                      questionText: q.questionText,
+                      questionType: q.questionType,
+                      selectedAnswers: answersToUse,
+                      options: q.options,
+                    });
+                    if (pop.success) populatedCount++;
+                  }
+                }
+                showInPageToast(`Approved & Ticked ${populatedCount}/${scanned.length} questions on SWAYAM!`, 'success');
+              }
+
+              enableCourseCompletionMode(activeApprovedTaskIds);
+              const res = adapter.applyCourseCompletionCheckmarks(document, activeApprovedTaskIds);
+              sendResponse({
+                type: 'COURSE_COMPLETION_RESULT',
+                success: true,
+                enabled: true,
+                appliedCount: res.appliedCount,
+                totalBlocks: res.totalBlocks,
+                pendingQuizzes: res.pendingQuizzes,
+              });
+            } catch (err) {
+              sendResponse({
+                type: 'COURSE_COMPLETION_RESULT',
+                success: false,
+                enabled: false,
+                appliedCount: 0,
+                totalBlocks: 0,
+                pendingQuizzes: 0,
+              });
+            }
+          })();
+          return true;
+        }
+
 
         return false;
       }

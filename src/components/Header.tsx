@@ -1,5 +1,5 @@
 import { Course, PortalTabInfo } from '@/types';
-import { Sidebar, Settings, Wifi, WifiOff } from 'lucide-react';
+import { Sidebar, Settings, Wifi, WifiOff, Calendar, Flag } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { networkDiagnostics, NetworkDiagnosis } from '@/lib/connection/networkDiagnostics';
 import { CourseSelector } from './CourseSelector';
@@ -93,50 +93,61 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Dynamic Portal Connection Badge Container */}
         <div className="header-badges-container">
-          <div
-            className="portal-badge"
-            style={{
-              background: portalInfo?.isSwayam
-                ? '#dcfce7'
-                : portalInfo?.isChatGpt
-                ? '#fef08a'
-                : 'var(--bg-surface-elevated, #f3f4f6)',
-              border: '1.5px solid var(--border-medium, #1a1a1a)',
-              boxShadow: '1px 1px 0px var(--border-medium, #1a1a1a)',
-            }}
-            title={
-              portalInfo?.isSwayam
-                ? `Connected to SWAYAM Portal: ${portalInfo.detectedAssignmentTitle || portalInfo.tabTitle || ''}`
-                : portalInfo?.isChatGpt
-                ? 'ChatGPT Web Bridge Tab Active'
-                : 'Portal Standby (navigate to a SWAYAM tab)'
-            }
-          >
-            <span
-              style={{
-                width: '6px',
-                height: '6px',
-                background: portalInfo?.isSwayam
-                  ? '#10b981'
-                  : portalInfo?.isChatGpt
-                  ? '#f59e0b'
-                  : '#9ca3af',
-                display: 'inline-block',
-                flexShrink: 0,
-              }}
-            ></span>
-            <span
-              style={{
-                color: portalInfo?.isSwayam || portalInfo?.isChatGpt ? '#1a1a1a' : 'var(--text-main)',
-              }}
-            >
-              {portalInfo?.isSwayam
-                ? 'SWAYAM'
-                : portalInfo?.isChatGpt
-                ? 'CHATGPT'
-                : 'STANDBY'}
-            </span>
-          </div>
+          {(() => {
+            const isWebAiActive = portalInfo?.isChatGpt || portalInfo?.isWebAi;
+            const webAiLabel = portalInfo?.webAiProvider === 'claude'
+              ? 'CLAUDE'
+              : portalInfo?.webAiProvider === 'gemini'
+              ? 'GEMINI'
+              : 'CHATGPT';
+
+            return (
+              <div
+                className="portal-badge"
+                style={{
+                  background: portalInfo?.isSwayam
+                    ? '#dcfce7'
+                    : isWebAiActive
+                    ? '#fef08a'
+                    : 'var(--bg-surface-elevated, #f3f4f6)',
+                  border: '1.5px solid var(--border-medium, #1a1a1a)',
+                  boxShadow: '1px 1px 0px var(--border-medium, #1a1a1a)',
+                }}
+                title={
+                  portalInfo?.isSwayam
+                    ? `Connected to SWAYAM Portal: ${portalInfo.detectedAssignmentTitle || portalInfo.tabTitle || ''}`
+                    : isWebAiActive
+                    ? `${webAiLabel} Web Bridge Tab Active`
+                    : 'Portal Standby (navigate to a SWAYAM tab)'
+                }
+              >
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    background: portalInfo?.isSwayam
+                      ? '#10b981'
+                      : isWebAiActive
+                      ? '#f59e0b'
+                      : '#9ca3af',
+                    display: 'inline-block',
+                    flexShrink: 0,
+                  }}
+                ></span>
+                <span
+                  style={{
+                    color: portalInfo?.isSwayam || isWebAiActive ? '#1a1a1a' : 'var(--text-main)',
+                  }}
+                >
+                  {portalInfo?.isSwayam
+                    ? 'SWAYAM'
+                    : isWebAiActive
+                    ? webAiLabel
+                    : 'STANDBY'}
+                </span>
+              </div>
+            );
+          })()}
 
           {/* Identified Week Badge */}
           {portalInfo?.detectedWeek && (
@@ -147,10 +158,13 @@ export const Header: React.FC<HeaderProps> = ({
                 border: '1.5px solid var(--border-medium, #1a1a1a)',
                 boxShadow: '1px 1px 0px var(--border-medium, #1a1a1a)',
                 color: '#1e40af',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
               }}
               title={`Active Week on Portal: ${portalInfo.detectedWeek}${portalInfo.detectedAssignmentTitle ? ` (${portalInfo.detectedAssignmentTitle})` : ''}`}
             >
-              <span>📅</span>
+              <Calendar size={10} />
               <span>{portalInfo.detectedWeek.toUpperCase()}</span>
             </div>
           )}
@@ -164,10 +178,13 @@ export const Header: React.FC<HeaderProps> = ({
                 border: '1.5px solid var(--border-medium, #1a1a1a)',
                 boxShadow: '1px 1px 0px var(--border-medium, #1a1a1a)',
                 color: '#15803d',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
               }}
               title={portalInfo.submissionStatus?.statusText || 'Assignment already submitted on portal.'}
             >
-              <span>🏁</span>
+              <Flag size={10} />
               <span>SUBMITTED</span>
             </div>
           )}

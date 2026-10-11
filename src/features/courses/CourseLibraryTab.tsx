@@ -8,6 +8,8 @@ import {
   Download,
   Database,
   ChevronDown,
+  Check,
+  X,
 } from 'lucide-react';
 
 interface CourseLibraryTabProps {
@@ -500,7 +502,8 @@ export const CourseLibraryTab: React.FC<CourseLibraryTabProps> = ({
                           gap: '3px',
                         }}
                       >
-                        ✓ {q.correctOptions?.join(', ') || q.answerText || 'None'}
+                        <Check size={9} />
+                        <span>{q.correctOptions?.join(', ') || q.answerText || 'None'}</span>
                       </span>
 
                       {/* Status Tag */}
@@ -659,10 +662,11 @@ export const CourseLibraryTab: React.FC<CourseLibraryTabProps> = ({
                   color: '#ffffff',
                   fontWeight: 800,
                   cursor: 'pointer',
-                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
                 }}
               >
-                ✕
+                <X size={14} />
               </button>
             </div>
 

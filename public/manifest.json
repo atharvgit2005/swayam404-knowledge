@@ -23,6 +23,8 @@
     "https://chatgpt.com/*",
     "https://*.claude.ai/*",
     "https://claude.ai/*",
+    "https://*.gemini.google.com/*",
+    "https://gemini.google.com/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
   ],
@@ -62,7 +64,9 @@
         "https://*.chatgpt.com/*",
         "https://chatgpt.com/*",
         "https://*.claude.ai/*",
-        "https://claude.ai/*"
+        "https://claude.ai/*",
+        "https://*.gemini.google.com/*",
+        "https://gemini.google.com/*"
       ],
       "js": ["chatgptContent.js"],
       "run_at": "document_idle"

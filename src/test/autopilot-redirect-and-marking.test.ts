@@ -270,8 +270,8 @@ describe('Milestone 7: Zero-Click End-to-End Auto-Pilot (ChatGPT Auto-Redirect &
       toast.id = 'swayam404-toast';
       toast.innerHTML = `
         <div class="toast-title">SWAYAM 404 • AUTO-PILOT</div>
-        <div class="toast-body">⚡ All 3 of 3 answers automatically marked! Review your choices and click "Submit" manually.</div>
-        <div class="toast-footer">🛡️ Zero Auto-Submit: Review answers & click Submit</div>
+        <div class="toast-body">All 3 of 3 answers automatically marked! Review your choices and click "Submit" manually.</div>
+        <div class="toast-footer">Zero Auto-Submit: Review answers & click Submit</div>
       `;
       document.body.appendChild(toast);
 

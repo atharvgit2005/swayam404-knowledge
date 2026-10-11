@@ -17,6 +17,7 @@ import {
   Save,
   AlertCircle,
   ShieldCheck,
+  X,
 } from 'lucide-react';
 
 interface ContributionPreviewModalProps {
@@ -179,9 +180,9 @@ export const ContributionPreviewModal: React.FC<ContributionPreviewModalProps> =
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: '#ffffff', fontWeight: 800, cursor: 'pointer', fontSize: '14px' }}
+            style={{ background: 'none', border: 'none', color: '#ffffff', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           >
-            ✕
+            <X size={14} />
           </button>
         </div>
 

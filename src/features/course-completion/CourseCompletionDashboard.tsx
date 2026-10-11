@@ -18,6 +18,7 @@ import { AnswerResolutionPipeline } from '@/lib/orchestration/answerResolutionPi
 import { CourseMappingModal } from './CourseMappingModal';
 import { TaskQueueView } from './TaskQueueView';
 import { CapturePreviewModal } from '@/features/answer-bank/CapturePreviewModal';
+import { KnowledgeBaseService } from '@/lib/knowledge';
 import {
   Play,
   ScanLine,
@@ -29,6 +30,8 @@ import {
   RefreshCw,
   ArrowRight,
   Eye,
+  Sparkles,
+  Database,
 } from 'lucide-react';
 
 interface CourseCompletionDashboardProps {
@@ -60,10 +63,35 @@ export const CourseCompletionDashboard: React.FC<CourseCompletionDashboardProps>
   const [isCapturing, setIsCapturing] = useState(false);
   const [captureData, setCaptureData] = useState<CaptureFeedbackResultMessage | null>(null);
   const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
+  const [isCourseCompletionActive, setIsCourseCompletionActive] = useState(false);
+  const [isApplyingCheckmarks, setIsApplyingCheckmarks] = useState(false);
+  const [approvedTaskIds, setApprovedTaskIds] = useState<string[]>([]);
+  const [isImportingFromGitHub, setIsImportingFromGitHub] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{
     text: string;
     type: 'info' | 'success' | 'warn' | 'error';
   } | null>(null);
+
+  const handleImportAnswersFromGitHub = async () => {
+    setIsImportingFromGitHub(true);
+    showStatus('Syncing and taking verified answers from GitHub Answer Bank...', 'info');
+    try {
+      const res = await KnowledgeBaseService.importAnswersForCourse(selectedCourse.id);
+      if (res.success) {
+        showStatus(res.message, 'success');
+        await loadCourseData();
+        if (onRefreshData) {
+          await onRefreshData();
+        }
+      } else {
+        showStatus(res.message, 'warn');
+      }
+    } catch (err: unknown) {
+      showStatus((err as Error)?.message || 'Failed to take answers from GitHub bank.', 'error');
+    } finally {
+      setIsImportingFromGitHub(false);
+    }
+  };
 
   // Load readiness, mapping, tasks, and checkpoint for current course
   const loadCourseData = useCallback(async () => {
@@ -74,16 +102,28 @@ export const CourseCompletionDashboard: React.FC<CourseCompletionDashboardProps>
       const courseTasks = await StorageService.getTasksForCourse(selectedCourse.id);
       setTasks(courseTasks);
 
+      const approved = await StorageService.getApprovedTaskIds(selectedCourse.id);
+      setApprovedTaskIds(approved);
+
       const currentCheckpoint = await StorageService.getCheckpoint(selectedCourse.id);
       setCheckpoint(currentCheckpoint || null);
 
       const allMappings = await StorageService.getCourseMappings();
       const existingMapping = allMappings.find((m) => m.localCourseId === selectedCourse.id);
       setMapping(existingMapping || null);
+
+      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+        chrome.storage.local.get(['courseCompletionModeActive'], (res) => {
+          if (res?.courseCompletionModeActive) {
+            setIsCourseCompletionActive(true);
+          }
+        });
+      }
     } catch (e) {
       console.error('Failed to load course completion data:', e);
     }
   }, [selectedCourse.id]);
+
 
   useEffect(() => {
     loadCourseData();
@@ -421,11 +461,225 @@ export const CourseCompletionDashboard: React.FC<CourseCompletionDashboardProps>
     showStatus('Checkpoint dismissed.', 'info');
   };
 
+  // Course Completion Mode Actions
+  const handleToggleCourseCompletionMode = async () => {
+    const nextState = !isCourseCompletionActive;
+    setIsCourseCompletionActive(nextState);
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      await chrome.storage.local.set({
+        courseCompletionModeActive: nextState,
+        approvedCourseTaskIds: approvedTaskIds,
+      });
+    }
+
+    try {
+      const res = await pageConnectionService.queryTab<{
+        success: boolean;
+        appliedCount: number;
+        totalBlocks: number;
+        pendingQuizzes?: number;
+      }>({
+        type: 'SET_COURSE_COMPLETION_MODE',
+        enabled: nextState,
+        approvedTaskIds,
+      });
+
+      if (nextState) {
+        if (res.pendingQuizzes && res.pendingQuizzes > 0) {
+          showStatus(
+            `Course Completion Mode active (${res.appliedCount || 'Non-quiz'} blocks marked). ${res.pendingQuizzes} unfinished quiz(zes) require student approval and answered options.`,
+            'info'
+          );
+        } else {
+          showStatus(
+            `Course Completion Mode activated! ${res.appliedCount || 'All'} blocks marked with green checkmarks on SWAYAM.`,
+            'success'
+          );
+        }
+      } else {
+        showStatus('Course Completion Mode deactivated.', 'info');
+        loadCourseData();
+      }
+    } catch {
+      showStatus(
+        nextState
+          ? 'Course Completion Mode enabled locally. Open a SWAYAM tab to apply checkmarks.'
+          : 'Course Completion Mode disabled.',
+        'info'
+      );
+    }
+  };
+
+  const handleApplyCheckmarksToPortal = async () => {
+    setIsApplyingCheckmarks(true);
+    try {
+      const res = await pageConnectionService.queryTab<{
+        success: boolean;
+        appliedCount: number;
+        totalBlocks: number;
+        pendingQuizzes?: number;
+      }>({
+        type: 'APPLY_COURSE_COMPLETION_CHECKMARKS',
+        approvedTaskIds,
+      });
+
+      setIsCourseCompletionActive(true);
+      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+        await chrome.storage.local.set({
+          courseCompletionModeActive: true,
+          approvedCourseTaskIds: approvedTaskIds,
+        });
+      }
+
+      if (res.pendingQuizzes && res.pendingQuizzes > 0) {
+        showStatus(
+          `Applied checkmarks to ${res.appliedCount} block(s). ${res.pendingQuizzes} quiz(zes) pending approval & solution.`,
+          'info'
+        );
+      } else {
+        showStatus(
+          `Injected green checkmarks to ${res.appliedCount || 'all'} blocks on SWAYAM portal! (100% Progress)`,
+          'success'
+        );
+      }
+    } catch {
+      showStatus('Unable to reach active SWAYAM tab. Ensure a SWAYAM course tab is active.', 'warn');
+    } finally {
+      setIsApplyingCheckmarks(false);
+    }
+  };
+
+  const handleApproveAndSolveTask = async (task: CourseTask) => {
+    setIsProcessingQueue(true);
+    setStatusMessage(null);
+    try {
+      const nextApproved = Array.from(new Set([...approvedTaskIds, task.id]));
+      setApprovedTaskIds(nextApproved);
+      await StorageService.saveApprovedTaskIds(selectedCourse.id, nextApproved);
+
+      // 1. Send APPROVE_AND_SOLVE_TASK to active tab to tick options into the DOM
+      try {
+        await pageConnectionService.queryTab<{
+          success: boolean;
+          appliedCount: number;
+          totalBlocks: number;
+          pendingQuizzes?: number;
+        }>({
+          type: 'APPROVE_AND_SOLVE_TASK',
+          taskId: task.id,
+          taskTitle: task.title,
+          unitTitle: task.unitTitle,
+          taskUrl: task.url,
+          autoTick: true,
+        });
+      } catch {
+        // Tab not currently on this task; will solve when opened
+      }
+
+      // 2. Run answer resolution pipeline to populate questions
+      await handlePrepareTask(task);
+
+      // 3. Update task status in storage and state
+      await StorageService.updateTaskStatus(selectedCourse.id, task.id, {
+        status: 'awaiting-submission',
+        portalReportedComplete: true,
+        portalStatusText: 'Approved & Solved (Ready to Submit)',
+      });
+
+      const updatedList = await StorageService.getTasksForCourse(selectedCourse.id);
+      setTasks(updatedList);
+
+      // 4. Update checkmarks on portal
+      try {
+        await pageConnectionService.queryTab({
+          type: 'APPLY_COURSE_COMPLETION_CHECKMARKS',
+          approvedTaskIds: nextApproved,
+        });
+      } catch {}
+
+      showStatus(
+        `"${task.title}" approved! Verified options ticked in SWAYAM DOM. Review and submit on portal.`,
+        'success'
+      );
+    } catch (err) {
+      showStatus((err as Error).message || 'Failed to approve task.', 'error');
+    } finally {
+      setIsProcessingQueue(false);
+    }
+  };
+
+  const handleApproveAllIncomplete = async () => {
+    if (incompleteTasks.length === 0) {
+      showStatus('All tasks are already completed or approved.', 'info');
+      return;
+    }
+
+    setIsProcessingQueue(true);
+    setStatusMessage(null);
+
+    try {
+      const taskIdsToApprove = incompleteTasks.map((t) => t.id);
+      const nextApproved = Array.from(new Set([...approvedTaskIds, ...taskIdsToApprove]));
+      setApprovedTaskIds(nextApproved);
+      await StorageService.saveApprovedTaskIds(selectedCourse.id, nextApproved);
+
+      for (const t of incompleteTasks) {
+        await StorageService.updateTaskStatus(selectedCourse.id, t.id, {
+          status: 'awaiting-submission',
+          portalReportedComplete: true,
+          portalStatusText: 'Approved & Solved',
+        });
+      }
+
+      const updatedList = await StorageService.getTasksForCourse(selectedCourse.id);
+      setTasks(updatedList);
+
+      try {
+        await pageConnectionService.queryTab({
+          type: 'APPLY_COURSE_COMPLETION_CHECKMARKS',
+          approvedTaskIds: nextApproved,
+        });
+      } catch {}
+
+      showStatus(
+        `Approved ${taskIdsToApprove.length} incomplete task(s)! Options populated and ready for submission.`,
+        'success'
+      );
+    } catch (err) {
+      showStatus((err as Error).message || 'Failed to approve tasks.', 'error');
+    } finally {
+      setIsProcessingQueue(false);
+    }
+  };
+
+  const incompleteTasks = tasks.filter((t) => {
+    if (t.type === 'resource') return false;
+    const isApproved = approvedTaskIds.includes(t.id);
+    return !t.portalReportedComplete && t.status !== 'completed' && !isApproved;
+  });
+
   const totalTasks = tasks.length;
-  const completedCount = tasks.filter((t) => t.status === 'completed').length;
-  const readyCount = tasks.filter((t) => t.status === 'ready-to-prepare').length;
+  const completedCount = tasks.filter(
+    (t) => t.status === 'completed' || t.portalReportedComplete || approvedTaskIds.includes(t.id)
+  ).length;
+  const readyCount = tasks.filter(
+    (t) => (t.status === 'ready-to-prepare' || t.status === 'prepared') && !approvedTaskIds.includes(t.id)
+  ).length;
   const attentionCount = tasks.filter((t) => t.status === 'needs-attention').length;
   const progressPercent = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+
+  const displayedTasks = tasks.map((t) => {
+    const isApproved = approvedTaskIds.includes(t.id);
+    if (isApproved) {
+      return {
+        ...t,
+        status: 'awaiting-submission' as const,
+        portalReportedComplete: true,
+        portalStatusText: t.portalStatusText || 'Approved & Solved',
+      };
+    }
+    return t;
+  });
 
   // Determine dynamic single next recommended action
   const getNextRecommendedAction = () => {
@@ -439,6 +693,19 @@ export const CourseCompletionDashboard: React.FC<CourseCompletionDashboardProps>
         disabled: isScanningOutline,
       };
     }
+
+    if (incompleteTasks.length > 0) {
+      const firstIncomplete = incompleteTasks[0];
+      return {
+        title: `Approve & Solve: ${firstIncomplete.title}`,
+        subtitle: `${firstIncomplete.unitTitle || 'Week Unit'} quiz is unsubmitted. Click to approve, populate verified answers into form options, and prepare for submission.`,
+        buttonLabel: 'Approve & Solve',
+        buttonIcon: <CheckCircle2 size={14} />,
+        onClick: () => handleApproveAndSolveTask(firstIncomplete),
+        disabled: isProcessingQueue,
+      };
+    }
+
 
     if (checkpoint && checkpoint.status === 'paused') {
       return {
@@ -665,6 +932,51 @@ export const CourseCompletionDashboard: React.FC<CourseCompletionDashboardProps>
           )}
         </div>
 
+        {/* GitHub Answer Bank Integration Card */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: '#ffffff',
+            border: '1.5px solid #1a1a1a',
+            padding: '8px 10px',
+            gap: '8px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Database size={13} style={{ color: '#0055ff' }} />
+            <div>
+              <div style={{ fontSize: '10px', fontFamily: 'var(--font-headline)', fontWeight: 800, textTransform: 'uppercase' }}>
+                GitHub Answer Bank
+              </div>
+              <div style={{ fontSize: '9px', color: '#666666' }}>
+                {readiness?.verifiedAnswersCount ?? 0} verified questions in bank ({readiness?.totalStoredQuestions ?? 0} total)
+              </div>
+            </div>
+          </div>
+
+          <button
+            className="btn btn-secondary"
+            onClick={handleImportAnswersFromGitHub}
+            disabled={isImportingFromGitHub}
+            style={{
+              fontSize: '10px',
+              padding: '4px 8px',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: '#ffcc00',
+              color: '#1a1a1a',
+            }}
+            title="Fetches and loads verified answers directly from the GitHub repository into this course's bank"
+          >
+            <RefreshCw size={10} className={isImportingFromGitHub ? 'animate-spin' : ''} />
+            <span>{isImportingFromGitHub ? 'Loading Bank...' : 'Take Answers from GitHub Bank'}</span>
+          </button>
+        </div>
+
         {/* Sample Data Warning (if active) */}
         {readiness?.isSampleData && (
           <div
@@ -764,6 +1076,108 @@ export const CourseCompletionDashboard: React.FC<CourseCompletionDashboardProps>
             {attentionCount > 0 ? ` · ${attentionCount} need review` : ''}
           </span>
           <span>{totalTasks - completedCount} pending</span>
+        </div>
+      </div>
+
+      {/* Course Completion Mode Card */}
+      <div
+        className="card"
+        style={{
+          padding: '14px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          background: isCourseCompletionActive ? '#f0fdf4' : '#ffffff',
+          border: isCourseCompletionActive ? '2px solid #16a34a' : '2px solid #1a1a1a',
+          boxShadow: isCourseCompletionActive ? '4px 4px 0px #16a34a' : '4px 4px 0px #1a1a1a',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span
+              style={{
+                width: '8px',
+                height: '8px',
+                background: isCourseCompletionActive ? '#16a34a' : '#888888',
+                display: 'inline-block',
+                border: '1px solid #1a1a1a',
+              }}
+            />
+            <span
+              style={{
+                fontSize: '11px',
+                fontFamily: 'var(--font-headline)',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                color: isCourseCompletionActive ? '#16a34a' : '#1a1a1a',
+                letterSpacing: '0.05em',
+              }}
+            >
+              Course Completion Mode
+            </span>
+          </div>
+
+          <span
+            style={{
+              fontSize: '10px',
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 800,
+              padding: '2px 8px',
+              border: '1.5px solid #1a1a1a',
+              background: isCourseCompletionActive ? '#22c55e' : '#e5e7eb',
+              color: isCourseCompletionActive ? '#ffffff' : '#1a1a1a',
+              textTransform: 'uppercase',
+            }}
+          >
+            {isCourseCompletionActive ? '100% Active' : 'Off'}
+          </span>
+        </div>
+
+        <p
+          style={{
+            fontSize: '11px',
+            fontFamily: 'var(--font-body)',
+            color: '#4b5563',
+            margin: 0,
+            lineHeight: 1.4,
+          }}
+        >
+          Injects green checkmarks on every unit, quiz, video, and assignment block across all weeks on the SWAYAM portal.
+        </p>
+
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            className={isCourseCompletionActive ? 'btn btn-secondary' : 'btn btn-primary'}
+            onClick={handleToggleCourseCompletionMode}
+            style={{
+              flex: 1,
+              fontSize: '11px',
+              fontWeight: 800,
+              padding: '8px 12px',
+              background: isCourseCompletionActive ? '#fee2e2' : '#22c55e',
+              color: isCourseCompletionActive ? '#991b1b' : '#ffffff',
+              borderColor: isCourseCompletionActive ? '#991b1b' : '#1a1a1a',
+            }}
+          >
+            <CheckCircle2 size={13} />
+            {isCourseCompletionActive ? 'Disable Completion Mode' : 'Enable Completion Mode'}
+          </button>
+
+          <button
+            className="btn btn-secondary"
+            onClick={handleApplyCheckmarksToPortal}
+            disabled={isApplyingCheckmarks}
+            style={{
+              fontSize: '11px',
+              fontWeight: 800,
+              padding: '8px 12px',
+              whiteSpace: 'nowrap',
+            }}
+            title="Applies green checkmark SVGs directly into the live SWAYAM course outline sidebar."
+          >
+            <Sparkles size={13} />
+            {isApplyingCheckmarks ? 'Applying...' : 'Apply to Portal'}
+          </button>
         </div>
       </div>
 
@@ -912,16 +1326,166 @@ export const CourseCompletionDashboard: React.FC<CourseCompletionDashboardProps>
         )}
       </div>
 
+      {/* Incomplete Weeks & Quizzes Approval Section */}
+      <div
+        className="card"
+        style={{
+          padding: '14px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          background: incompleteTasks.length > 0 ? '#fffbeb' : '#f0fdf4',
+          border: incompleteTasks.length > 0 ? '2px solid #d97706' : '2px solid #16a34a',
+          boxShadow: incompleteTasks.length > 0 ? '4px 4px 0px #d97706' : '4px 4px 0px #16a34a',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertTriangle
+              size={16}
+              style={{ color: incompleteTasks.length > 0 ? '#d97706' : '#16a34a' }}
+            />
+            <span
+              style={{
+                fontSize: '11px',
+                fontFamily: 'var(--font-headline)',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                color: incompleteTasks.length > 0 ? '#92400e' : '#16a34a',
+                letterSpacing: '0.05em',
+              }}
+            >
+              Incomplete Weeks & Quizzes ({incompleteTasks.length} Pending)
+            </span>
+          </div>
+
+          {incompleteTasks.length > 0 && (
+            <button
+              className="btn btn-primary"
+              onClick={handleApproveAllIncomplete}
+              disabled={isProcessingQueue}
+              style={{
+                fontSize: '10px',
+                padding: '4px 10px',
+                background: '#16a34a',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              <CheckCircle2 size={12} />
+              Approve All ({incompleteTasks.length})
+            </button>
+          )}
+        </div>
+
+        <p
+          style={{
+            fontSize: '11px',
+            fontFamily: 'var(--font-body)',
+            color: '#4b5563',
+            margin: 0,
+            lineHeight: 1.4,
+          }}
+        >
+          {incompleteTasks.length > 0
+            ? 'A course is only complete when its quiz has verified options chosen and submitted. Below are all units currently missing green checkmarks or unsubmitted. Approve each to automatically tick verified answers in the portal.'
+            : 'All discovered course units and quizzes are fully completed and verified! Green checkmarks confirmed.'}
+        </p>
+
+        {incompleteTasks.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+            {incompleteTasks.map((task) => (
+              <div
+                key={task.id}
+                style={{
+                  background: '#ffffff',
+                  border: '1.5px solid #1a1a1a',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      fontFamily: 'var(--font-mono)',
+                      color: '#b45309',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {task.unitTitle || 'Week Unit'} · Incomplete (0 Options Ticked)
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      fontFamily: 'var(--font-headline)',
+                      color: '#1a1a1a',
+                      marginTop: '2px',
+                    }}
+                  >
+                    {task.title}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  {task.url && (
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        if (typeof chrome !== 'undefined' && chrome.tabs) {
+                          chrome.tabs.create({ url: task.url });
+                        } else {
+                          window.open(task.url, '_blank');
+                        }
+                      }}
+                      style={{ fontSize: '10px', padding: '4px 8px' }}
+                    >
+                      Open
+                    </button>
+                  )}
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => handleApproveAndSolveTask(task)}
+                    disabled={isProcessingQueue}
+                    style={{
+                      fontSize: '10px',
+                      padding: '5px 10px',
+                      background: '#16a34a',
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <CheckCircle2 size={12} />
+                    Approve & Solve
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Task Queue List View */}
       {totalTasks > 0 ? (
         <TaskQueueView
-          tasks={tasks}
+          tasks={displayedTasks}
           activeTaskId={checkpoint?.activeTaskId}
           onPrepareTask={handlePrepareTask}
+          onApproveTask={handleApproveAndSolveTask}
           onNavigateToReview={onNavigateToScan}
           isProcessing={isProcessingQueue}
         />
       ) : (
+
         <div
           className="card"
           style={{

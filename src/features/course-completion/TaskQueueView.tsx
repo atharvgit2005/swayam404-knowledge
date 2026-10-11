@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
-  Play,
   ExternalLink,
   BookOpen,
   HelpCircle,
@@ -13,21 +12,26 @@ import {
   Sparkles,
 } from 'lucide-react';
 
+
 interface TaskQueueViewProps {
   tasks: CourseTask[];
   activeTaskId?: string;
   onPrepareTask: (task: CourseTask) => Promise<unknown>;
+  onApproveTask?: (task: CourseTask) => Promise<unknown> | void;
   onNavigateToReview?: () => void;
   isProcessing: boolean;
 }
+
 
 export const TaskQueueView: React.FC<TaskQueueViewProps> = ({
   tasks,
   activeTaskId,
   onPrepareTask,
+  onApproveTask,
   onNavigateToReview,
   isProcessing,
 }) => {
+
   const [filter, setFilter] = useState<'all' | 'ready' | 'attention' | 'completed'>('all');
 
   const filteredTasks = tasks.filter((task) => {
@@ -367,11 +371,21 @@ export const TaskQueueView: React.FC<TaskQueueViewProps> = ({
                   <button
                     className="btn btn-primary"
                     disabled={isProcessing}
-                    onClick={() => onPrepareTask(task)}
-                    style={{ fontSize: '10px', padding: '5px 10px' }}
+                    onClick={() => (onApproveTask ? onApproveTask(task) : onPrepareTask(task))}
+                    style={{
+                      fontSize: '10px',
+                      padding: '5px 10px',
+                      background: task.status === 'awaiting-submission' ? '#2563eb' : '#16a34a',
+                      color: '#ffffff',
+                    }}
+                    title="Approves this unit and ticks verified answers into quiz form options on SWAYAM"
                   >
-                    <Play size={11} />
-                    {task.status === 'needs-attention' ? 'Re-prepare' : 'Prepare'}
+                    <CheckCircle2 size={11} />
+                    {task.status === 'awaiting-submission'
+                      ? 'Re-solve Options'
+                      : task.status === 'needs-attention'
+                      ? 'Review & Solve'
+                      : 'Approve & Solve'}
                   </button>
                 )}
               </div>

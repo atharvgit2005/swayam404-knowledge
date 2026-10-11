@@ -12,6 +12,7 @@ import {
   ScanHistoryRecord,
   PortalTabInfo,
   SubmissionStatus,
+  WebAiProviderType,
 } from '@/types';
 import { pageConnectionService, PageConnectionService } from '@/lib/connection/pageConnection';
 import { StorageService } from '@/lib/storage';
@@ -48,6 +49,12 @@ import {
   BookOpen,
   ChevronDown,
   ChevronUp,
+  Bot,
+  Cpu,
+  Calendar,
+  Flag,
+  Check,
+  Clock,
 } from 'lucide-react';
 
 interface ScannerTabProps {
@@ -274,7 +281,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
       savedAt: new Date().toISOString(),
     });
     setIsHistoryModalOpen(false);
-    showNotification(`✓ Restored "${item.assignmentTitle}" (${item.totalQuestions} questions)`);
+    showNotification(`Restored "${item.assignmentTitle}" (${item.totalQuestions} questions)`);
   };
 
   // 1. Scan Questions (Stage A & B historical retrieval, skip LLM for initial inspection)
@@ -326,7 +333,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
 
       if (response.isAlreadySubmitted) {
         showNotification(
-          `🏁 Assignment is already submitted on SWAYAM (${response.submissionStatus?.scoreText || 'Completed'}). Inputs are locked. Use "Capture Graded Feedback" to save answers.`
+          `Assignment is already submitted on SWAYAM (${response.submissionStatus?.scoreText || 'Completed'}). Inputs are locked. Use "Capture Graded Feedback" to save answers.`
         );
       } else if (answerBank.length === 0) {
         showNotification(
@@ -489,14 +496,85 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
     }
   };
 
-  // Web AI Bridge state (ChatGPT Web / Claude Web)
+  // Web AI Bridge state (ChatGPT Web / Claude Web / Gemini Web)
+  const [webAiProvider, setWebAiProvider] = useState<WebAiProviderType>('chatgpt');
   const [webAiPastedText, setWebAiPastedText] = useState('');
   const [isWebAiPanelOpen, setIsWebAiPanelOpen] = useState(false);
   const [copiedPromptFeedback, setCopiedPromptFeedback] = useState(false);
   const [webAiError, setWebAiError] = useState<string | null>(null);
   const [isApplyingWebAi, setIsApplyingWebAi] = useState(false);
 
-  // Copy 1-Click Prompt for Web AI (ChatGPT Web / Claude Web)
+  useEffect(() => {
+    StorageService.getSettings().then((s) => {
+      if (s?.webAiProvider) {
+        setWebAiProvider(s.webAiProvider);
+      }
+    });
+
+    if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+      const listener = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+        if (area === 'local' && changes.webAiProvider?.newValue) {
+          setWebAiProvider(changes.webAiProvider.newValue);
+        } else if (area === 'sync' && changes.swayam404_settings_v1?.newValue?.webAiProvider) {
+          setWebAiProvider(changes.swayam404_settings_v1.newValue.webAiProvider);
+        }
+      };
+      chrome.storage.onChanged.addListener(listener);
+      return () => chrome.storage.onChanged.removeListener(listener);
+    }
+  }, []);
+
+  const providerLabel = ChatGptBridgeService.getProviderLabel(webAiProvider);
+
+  // Automatically persists verified & student-reviewed answers into Question Bank on weekly/session basis
+  const autoSaveAnswersToBank = async (approvedItems: QuestionMatchResult[]) => {
+    try {
+      const activeWeek = portalInfo?.detectedWeek || detectedWeek || 'Weekly Assignment';
+      const activeExternalId = portalInfo?.detectedExternalId || portalInfo?.userSessionId;
+      const questionsToSave: QuestionRecord[] = approvedItems
+        .filter((r) => r.proposedAnswers && r.proposedAnswers.length > 0)
+        .map((r) => ({
+          id: `bank-${r.scannedQuestion.id || Math.random().toString(36).substring(2, 9)}`,
+          courseId: effectiveCourse.id,
+          externalCourseId: activeExternalId,
+          portalCourseTitle: portalInfo?.detectedCourseTitle || effectiveCourse.name,
+          assignmentTitle: portalInfo?.detectedAssignmentTitle || activeWeek,
+          week: activeWeek,
+          weekNumber: portalInfo?.detectedWeekNumber,
+          userSessionId: portalInfo?.userSessionId || activeExternalId,
+          userEmail: portalInfo?.userEmail,
+          questionText: r.scannedQuestion.questionText,
+          questionType: r.scannedQuestion.questionType,
+          options: r.scannedQuestion.options.map((o) => o.text),
+          correctOptions: r.proposedAnswers,
+          acceptedAnswers: r.proposedAnswers,
+          answerText: r.proposedAnswers[0],
+          reviewStatus: (r.resolutionState === 'portal-confirmed' ? 'portal-confirmed' : 'student-reviewed') as any,
+          verificationSource: `web-ai-${webAiProvider}`,
+          source: `${activeWeek} - ${effectiveCourse.name}${activeExternalId ? ` (${activeExternalId})` : ''}`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }));
+
+      if (questionsToSave.length > 0) {
+        await StorageService.saveQuestionsForWeekAndSession({
+          courseId: effectiveCourse.id,
+          week: activeWeek,
+          weekNumber: portalInfo?.detectedWeekNumber,
+          userSessionId: portalInfo?.userSessionId || activeExternalId,
+          userEmail: portalInfo?.userEmail,
+          questions: questionsToSave,
+        });
+        if (onRefreshData) {
+          await onRefreshData();
+        }
+      }
+    } catch (saveErr) {
+      console.warn('[swayam404] Could not auto-save answers to bank:', saveErr);
+    }
+  };
+
+  // Copy 1-Click Prompt for Web AI (ChatGPT Web / Claude Web / Gemini Web)
   const handleCopyWebAiPrompt = async () => {
     if (results.length === 0) return;
     const questionsToPrompt =
@@ -514,13 +592,14 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
     if (copied) {
       setCopiedPromptFeedback(true);
       setTimeout(() => setCopiedPromptFeedback(false), 4000);
-      showNotification(`✓ Prompt for ${questionsToPrompt.length} questions copied to clipboard!`);
+      showNotification(`Prompt for ${questionsToPrompt.length} questions copied to clipboard!`);
 
       // Store in chrome.storage.local for content script sync
       if (typeof chrome !== 'undefined' && chrome.storage?.local) {
         chrome.storage.local.set({
           pendingChatGptPrompt: promptText,
           pendingQuestionsCount: questionsToPrompt.length,
+          webAiProvider,
         });
       }
     } else {
@@ -528,23 +607,23 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
     }
   };
 
-  // Open ChatGPT Web in new tab with auto-prepared prompt
-  const handleOpenChatGptWeb = async () => {
+  // Open active Web AI in new tab with auto-prepared prompt
+  const handleOpenWebAi = async () => {
     if (!netDiagnosis.isOnline) {
-      showNotification('⚠️ You are offline. Cannot open external ChatGPT. Please reconnect to Wi-Fi.');
+      showNotification(`Device is offline. Cannot open external ${providerLabel}. Please reconnect to Wi-Fi.`);
       return;
     }
     if (results.length > 0) {
       await handleCopyWebAiPrompt();
     }
-    await ChatGptBridgeService.openChatGptTab('https://chatgpt.com/');
+    await ChatGptBridgeService.openWebAiTab(webAiProvider);
   };
 
-  // ⚡ 1-Click Master Auto-Pilot Loop: Scan -> ChatGPT -> Solve -> Fill
+  // 1-Click Master Auto-Pilot Loop: Scan -> Web AI (ChatGPT/Claude/Gemini) -> Solve -> Fill
   const handleAutoPilotFlow = async () => {
     if (isAlreadySubmitted || submissionStatus?.isSubmitted) {
       showNotification(
-        '🏁 This assignment is already submitted on SWAYAM. Auto-fill is locked. Launching Feedback Capture...'
+        'Assignment is already submitted on SWAYAM. Auto-fill is locked. Launching Feedback Capture...'
       );
       handleCaptureFeedback();
       return;
@@ -552,13 +631,13 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
 
     if (!netDiagnosis.isOnline) {
       showNotification(
-        '⚠️ Internet issue: Device is offline. External AI is unavailable. You can review with local answer bank.'
+        'Internet issue: Device is offline. External AI is unavailable. You can review with local answer bank.'
       );
       return;
     }
 
     setIsScanning(true);
-    showNotification('⚡ Auto-Pilot: Scanning assignment questions...');
+    showNotification(`Auto-Pilot: Scanning assignment questions...`);
     try {
       let currentResults = results;
       if (currentResults.length === 0) {
@@ -577,7 +656,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
         }
 
         if (response.isAlreadySubmitted) {
-          showNotification('🏁 Assignment is already submitted on portal. Capturing feedback...');
+          showNotification('Assignment is already submitted on portal. Capturing feedback...');
           handleCaptureFeedback();
           return;
         }
@@ -632,6 +711,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
         await chrome.storage.local.set({
           pendingChatGptPrompt: promptText,
           pendingQuestionsCount: questionsToPrompt.length,
+          webAiProvider,
           autoPilotActive: true,
           swayam_pilot_context: {
             tabId: activeTabId,
@@ -641,8 +721,8 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
         });
       }
 
-      showNotification(`⚡ Auto-Pilot: Questions copied! Opening ChatGPT to solve...`);
-      await ChatGptBridgeService.openChatGptTab('https://chatgpt.com/');
+      showNotification(`Auto-Pilot: Questions copied! Opening ${providerLabel} to solve...`);
+      await ChatGptBridgeService.openWebAiTab(webAiProvider);
     } catch (err) {
       showNotification(`Auto-Pilot Error: ${(err as Error).message}`);
     } finally {
@@ -689,6 +769,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
           : r
       );
       setResults(autoApproved);
+      await autoSaveAnswersToBank(autoApproved);
       setWebAiPastedText('');
       setIsWebAiPanelOpen(false);
 
@@ -711,17 +792,17 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
           if (popRes && popRes.summary) {
             setPopSummary(popRes.summary);
             showNotification(
-              `🎉 All ${popRes.summary.succeeded} of ${targets.length} answers marked on SWAYAM! Review choices and click Submit.`
+              `All ${popRes.summary.succeeded} of ${targets.length} answers marked on SWAYAM & saved to Question Bank! Review and submit manually.`
             );
           }
         } catch (fillErr) {
           showNotification(
-            `✓ Applied & approved ${merged.mergedCount} answers! Click "Fill Reviewed Answers" to populate: ${(fillErr as Error).message}`
+            `Applied, approved & saved ${merged.mergedCount} answers into Question Bank! Click "Fill Reviewed Answers" to populate: ${(fillErr as Error).message}`
           );
         }
       } else {
         showNotification(
-          `✓ Applied & approved ${merged.mergedCount} answers from Web AI! Ready to fill. (${merged.protectedCount} verified answers preserved)`
+          `Applied, approved & saved ${merged.mergedCount} answers into Question Bank! Ready to fill. (${merged.protectedCount} verified answers preserved)`
         );
       }
     } catch (err) {
@@ -798,17 +879,17 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
           if (popRes && popRes.summary) {
             setPopSummary(popRes.summary);
             showNotification(
-              `🎉 All ${popRes.summary.succeeded} of ${targets.length} answers marked on SWAYAM! Review choices and click Submit.`
+              `All ${popRes.summary.succeeded} of ${targets.length} answers marked on SWAYAM! Review choices and click Submit.`
             );
           }
         } catch (fillErr) {
           showNotification(
-            `✓ Applied & approved ${merged.mergedCount} answers! Click "Fill Reviewed Answers" to populate: ${(fillErr as Error).message}`
+            `Applied & approved ${merged.mergedCount} answers! Click "Fill Reviewed Answers" to populate: ${(fillErr as Error).message}`
           );
         }
       } else {
         showNotification(
-          `✓ Applied & approved ${merged.mergedCount} answers from Web AI! Ready to fill. (${merged.protectedCount} verified answers preserved)`
+          `Applied & approved ${merged.mergedCount} answers from Web AI! Ready to fill. (${merged.protectedCount} verified answers preserved)`
         );
       }
     } catch (err) {
@@ -848,7 +929,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
               }
 
               if (currentResults.length === 0) {
-                showNotification('⚠️ Answers received from Web AI, but no questions scanned. Click "Scan Assignment" first!');
+                showNotification('Answers received from Web AI, but no questions scanned. Click "Scan Assignment" first!');
                 chrome.storage.local.remove('swayam_chatgpt_sync');
                 return;
               }
@@ -863,6 +944,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
                     : r
                 );
                 setResults(autoApproved);
+                await autoSaveAnswersToBank(autoApproved);
 
                 // Auto-fill into SWAYAM page inputs!
                 const approvedFillItems = autoApproved.filter((r) => r.isApproved && r.proposedAnswers.length > 0);
@@ -884,18 +966,18 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
                       if (popRes && popRes.summary) {
                         setPopSummary(popRes.summary);
                         showNotification(
-                          `🎉 Auto-Pilot Complete! ${popRes.summary.succeeded} of ${targets.length} answers filled on SWAYAM. Review and submit manually!`
+                          `Auto-Pilot Complete! ${popRes.summary.succeeded} of ${targets.length} answers filled on SWAYAM & saved to Question Bank. Review and submit manually.`
                         );
                       }
                     })
                     .catch((err) => {
-                      showNotification(`⚡ Auto-synced answers! Click "Fill Reviewed Answers" to populate: ${(err as Error).message}`);
+                      showNotification(`Auto-synced answers! Click "Fill Reviewed Answers" to populate: ${(err as Error).message}`);
                     });
                 } else {
-                  showNotification(`⚡ Auto-synced & approved ${merged.mergedCount} answers directly from Web AI tab! Ready to fill.`);
+                  showNotification(`Auto-synced & approved ${merged.mergedCount} answers directly from Web AI tab! Saved to Question Bank.`);
                 }
               } else {
-                showNotification(`⚠️ Web AI answers received, but 0 options matched. Try "Review & Import" to paste or inspect.`);
+                showNotification(`Web AI answers received, but 0 options matched. Try "Review & Import" to paste or inspect.`);
               }
               chrome.storage.local.remove('swayam_chatgpt_sync');
             })();
@@ -1000,7 +1082,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
             }}
             title={detectedWeek ? `Current Detected Week: ${detectedWeek}` : 'Week number not yet detected from page'}
           >
-            <span>📅</span>
+            <Calendar size={10} />
             <span>{detectedWeek ? detectedWeek.toUpperCase() : 'WEEK --'}</span>
           </span>
 
@@ -1023,7 +1105,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
             }}
             title={submissionStatus?.statusText || (isAlreadySubmitted ? 'Assignment Submitted' : 'Assignment Open')}
           >
-            <span>{isAlreadySubmitted ? '🏁' : submissionStatus?.isPastDue ? '🔒' : '📝'}</span>
+            <Flag size={10} />
             <span>{isAlreadySubmitted ? 'SUBMITTED' : submissionStatus?.isPastDue ? 'CLOSED' : 'OPEN'}</span>
           </span>
         </div>
@@ -1059,7 +1141,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
         </div>
       </div>
 
-      {/* 🏁 Assignment Already Submitted Warning & Action Card */}
+      {/* Assignment Already Submitted Warning & Action Card */}
       {isAlreadySubmitted && (
         <div
           style={{
@@ -1074,7 +1156,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, color: '#166534', fontSize: '12px' }}>
-              <span>🏁</span>
+              <Flag size={13} />
               <span>ASSIGNMENT ALREADY SUBMITTED ON SWAYAM</span>
             </div>
             {submissionStatus?.scoreText && (
@@ -1112,7 +1194,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
         </div>
       )}
 
-      {/* ⚠️ Internet Issue Identifier Alert */}
+      {/* Internet Issue Identifier Alert */}
       {!netDiagnosis.isOnline && (
         <div
           style={{
@@ -1164,7 +1246,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
             }}
           >
             <div style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <span>⚠️</span>
+              <AlertTriangle size={12} />
               <span>COURSE PROFILE MISMATCH</span>
             </div>
             <div>
@@ -1189,7 +1271,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
           </div>
         )}
 
-      {/* ⚠️ Week/Quiz Switch Detected on Portal */}
+      {/* Week/Quiz Switch Detected on Portal */}
       {isWeekOrQuizSwitched && (
         <div
           style={{
@@ -1228,7 +1310,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
               }}
             >
               <RefreshCw size={12} className={isScanning ? 'animate-spin' : ''} />
-              <span>⚡ Reload & Scan {portalInfo?.detectedWeek || 'New Quiz'} →</span>
+              <span>Reload & Scan {portalInfo?.detectedWeek || 'New Quiz'} →</span>
             </button>
           </div>
           <div style={{ fontSize: '11px', color: '#78350f', lineHeight: 1.4 }}>
@@ -1316,9 +1398,9 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
                 gap: '6px',
               }}
             >
-              <div style={{ fontSize: '11px', color: '#1e3a8a', fontWeight: 700 }}>
-                ✨ Active Portal Tab: <b>{portalInfo.detectedWeek}</b>
-                {portalInfo.detectedAssignmentTitle ? ` • ${portalInfo.detectedAssignmentTitle}` : ''}
+              <div style={{ fontSize: '11px', color: '#1e3a8a', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Sparkles size={12} />
+                <span>Active Portal Tab: <b>{portalInfo.detectedWeek}</b>{portalInfo.detectedAssignmentTitle ? ` • ${portalInfo.detectedAssignmentTitle}` : ''}</span>
               </div>
               <span
                 style={{
@@ -1364,7 +1446,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
             )}
           </button>
 
-          {/* ⚡ 1-Click Auto-Pilot Master CTA */}
+          {/* 1-Click Auto-Pilot Master CTA */}
           <button
             className="btn btn-primary"
             onClick={handleAutoPilotFlow}
@@ -1390,7 +1472,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
             title="Automatically scan questions, send to ChatGPT, wait for answers, and auto-fill into SWAYAM page!"
           >
             <Zap size={15} />
-            <span>⚡ 1-Click Auto-Pilot {portalInfo?.detectedWeek ? `for ${portalInfo.detectedWeek}` : ''} (Scan → Solve → Fill)</span>
+            <span>1-Click Auto-Pilot {portalInfo?.detectedWeek ? `for ${portalInfo.detectedWeek} ` : ''}({providerLabel} → Auto-Fill)</span>
           </button>
 
           {/* Recent Assignment Scan Shortcut */}
@@ -1408,8 +1490,9 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '10px', fontWeight: 800, fontFamily: 'var(--font-headline)', textTransform: 'uppercase', color: 'var(--text-main, #1a1a1a)' }}>
-                  🕒 Saved Assignment History
+                <span style={{ fontSize: '10px', fontWeight: 800, fontFamily: 'var(--font-headline)', textTransform: 'uppercase', color: 'var(--text-main, #1a1a1a)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Clock size={11} />
+                  <span>Saved Assignment History</span>
                 </span>
                 <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-dim, #666)' }}>
                   {new Date(scanHistory[0].timestamp).toLocaleDateString()}
@@ -1426,9 +1509,10 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
               <button
                 className="btn btn-secondary"
                 onClick={() => handleRestoreHistoryItem(scanHistory[0])}
-                style={{ fontSize: '10px', padding: '4px 8px', alignSelf: 'flex-start', marginTop: '4px', fontWeight: 800 }}
+                style={{ fontSize: '10px', padding: '4px 8px', alignSelf: 'flex-start', marginTop: '4px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}
               >
-                <span>⚡ Resume This Assignment</span>
+                <Zap size={11} />
+                <span>Resume This Assignment</span>
               </button>
             </div>
           )}
@@ -1531,7 +1615,64 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
             </div>
           </div>
 
-          {/* ⚡ 1-Click Auto-Pilot Master Button */}
+          {/* Active AI Bridge Provider Toggler */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '6px',
+              padding: '6px 8px',
+              background: 'var(--color-surface-low, #f2ede5)',
+              border: '1.5px solid var(--border-medium, #1a1a1a)',
+            }}
+          >
+            <span style={{ fontSize: '10px', fontWeight: 800, fontFamily: 'var(--font-headline)', color: 'var(--text-dim, #71717a)', textTransform: 'uppercase' }}>
+              Active AI Bridge:
+            </span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {[
+                { id: 'chatgpt' as const, label: 'ChatGPT', Icon: Bot },
+                { id: 'claude' as const, label: 'Claude', Icon: Cpu },
+                { id: 'gemini' as const, label: 'Gemini', Icon: Sparkles },
+              ].map(({ id, label, Icon }) => {
+                const isActive = webAiProvider === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={async () => {
+                      setWebAiProvider(id);
+                      await StorageService.saveSettings({ webAiProvider: id });
+                      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+                        chrome.storage.local.set({ webAiProvider: id });
+                      }
+                      showNotification(`Switched AI Bridge to ${label} Web`);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '3px 8px',
+                      fontSize: '10px',
+                      fontFamily: 'var(--font-headline)',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      border: '1px solid var(--border-medium, #1a1a1a)',
+                      background: isActive ? '#ffcc00' : 'var(--bg-surface-elevated, #ffffff)',
+                      color: isActive ? '#1a1a1a' : 'var(--text-main, #1a1a1a)',
+                      boxShadow: isActive ? '1.5px 1.5px 0px var(--border-medium, #1a1a1a)' : 'none',
+                    }}
+                  >
+                    <Icon size={11} />
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 1-Click Auto-Pilot Master Button */}
           <button
             className="btn btn-primary"
             onClick={handleAutoPilotFlow}
@@ -1553,10 +1694,10 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
               gap: '8px',
               cursor: isScanning || isPopulating ? 'not-allowed' : 'pointer',
             }}
-            title="Automatically send questions to ChatGPT, wait for answers, and auto-fill into SWAYAM page!"
+            title={`Automatically send questions to ${providerLabel}, wait for answers, and auto-fill into SWAYAM page!`}
           >
             <Zap size={14} />
-            <span>⚡ 1-Click Auto-Pilot (ChatGPT → Auto-Fill)</span>
+            <span>1-Click Auto-Pilot ({providerLabel} → Auto-Fill)</span>
           </button>
 
           {/* Primary Action Strip: 3-Step Web AI Execution */}
@@ -1568,17 +1709,17 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
               title="Copy prompt for all questions with options and instructions"
             >
               <Copy size={12} />
-              <span>{copiedPromptFeedback ? '✓ Copied!' : '1. Copy for AI'}</span>
+              <span>{copiedPromptFeedback ? 'Copied!' : '1. Copy for AI'}</span>
             </button>
 
             <button
               className="btn btn-secondary"
-              onClick={handleOpenChatGptWeb}
+              onClick={handleOpenWebAi}
               style={{ fontSize: '10px', padding: '8px 4px', fontWeight: 700 }}
-              title="Auto-copy prompt and open ChatGPT in browser tab"
+              title={`Auto-copy prompt and open ${providerLabel} in browser tab`}
             >
               <ExternalLink size={12} />
-              <span>2. ChatGPT ↗</span>
+              <span>2. {providerLabel} ↗</span>
             </button>
 
             <button
@@ -1589,7 +1730,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
               title="Read clipboard, auto-match options, and immediately mark all radio buttons on SWAYAM in 1 click"
             >
               <Sparkles size={12} />
-              <span>{isApplyingWebAi ? 'Marking...' : '3. ⚡ Paste & Mark Answers'}</span>
+              <span>{isApplyingWebAi ? 'Marking...' : '3. Paste & Mark Answers'}</span>
             </button>
           </div>
 
@@ -1658,8 +1799,9 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
                 }}
               />
               {webAiError && (
-                <div style={{ fontSize: '10px', color: 'var(--color-error)', fontFamily: 'var(--font-mono)' }}>
-                  ⚠ {webAiError}
+                <div style={{ fontSize: '10px', color: 'var(--color-error)', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <AlertTriangle size={11} style={{ flexShrink: 0 }} />
+                  <span>{webAiError}</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
@@ -1812,9 +1954,13 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
                         fontWeight: 800,
                         border: '1px solid var(--border-medium)',
                         textTransform: 'uppercase',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
                       }}
                     >
-                      ✓ Verified Key
+                      <Check size={10} />
+                      <span>Verified Key</span>
                     </span>
                   ) : isAi ? (
                     <span
@@ -1829,7 +1975,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
                         textTransform: 'uppercase',
                       }}
                     >
-                      ChatGPT Pick
+                      {ChatGptBridgeService.getProviderLabel(webAiProvider)} Pick
                     </span>
                   ) : (
                     <span
@@ -1859,10 +2005,10 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
                         assignmentTitle: pageInfo?.title,
                       });
                       await ChatGptBridgeService.copyToClipboard(singlePrompt);
-                      showNotification(`✓ Copied Q.${q.index} prompt for ChatGPT!`);
+                      showNotification(`Copied Q.${q.index} prompt for ${ChatGptBridgeService.getProviderLabel(webAiProvider)}!`);
                     }}
                     style={{ fontSize: '9px', padding: '2px 7px' }}
-                    title="Copy this single question for ChatGPT"
+                    title={`Copy this single question for ${ChatGptBridgeService.getProviderLabel(webAiProvider)}`}
                   >
                     <Copy size={10} />
                     <span>Copy Q</span>
@@ -1879,7 +2025,14 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
                     }}
                     title="Toggle approval for auto-fill"
                   >
-                    {item.isApproved ? 'Approved ✓' : 'Approve'}
+                    {item.isApproved ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        <span>Approved</span>
+                        <Check size={10} />
+                      </span>
+                    ) : (
+                      'Approve'
+                    )}
                   </button>
                 </div>
               </div>
@@ -1939,9 +2092,19 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
                               fontWeight: 800,
                               textTransform: 'uppercase',
                               flexShrink: 0,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
                             }}
                           >
-                            {isPortal ? '✓ Verified' : 'Selected'}
+                            {isPortal ? (
+                              <>
+                                <Check size={9} />
+                                <span>Verified</span>
+                              </>
+                            ) : (
+                              'Selected'
+                            )}
                           </span>
                         )}
                       </div>
@@ -2147,17 +2310,34 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
 
                           {/* Provenance Classification Footer */}
                           <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '9px', fontFamily: 'var(--font-headline)', flexWrap: 'wrap', gap: '4px' }}>
-                            <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
-                              {isPortal
-                                ? '✓ Portal-Confirmed Answer Key'
-                                : item.resolutionState === 'student-reviewed'
-                                ? '✓ Verified Student-Reviewed Record'
-                                : count > 0
-                                ? '⚡ Source-Supported Explanation'
-                                : '⚡ AI Domain Inference'}
+                            <span style={{ fontWeight: 700, color: 'var(--text-main)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              {isPortal ? (
+                                <>
+                                  <Check size={9} />
+                                  <span>Portal-Confirmed Answer Key</span>
+                                </>
+                              ) : item.resolutionState === 'student-reviewed' ? (
+                                <>
+                                  <Check size={9} />
+                                  <span>Verified Student-Reviewed Record</span>
+                                </>
+                              ) : count > 0 ? (
+                                <>
+                                  <Zap size={9} />
+                                  <span>Source-Supported Explanation</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Zap size={9} />
+                                  <span>AI Domain Inference</span>
+                                </>
+                              )}
                             </span>
                             {item.requiresReview && (
-                              <span style={{ color: '#e63b2e', fontWeight: 800 }}>⚠️ Needs Student Review</span>
+                              <span style={{ color: '#e63b2e', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                <AlertTriangle size={9} />
+                                <span>Needs Student Review</span>
+                              </span>
                             )}
                           </div>
                         </div>
@@ -2223,9 +2403,9 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
               </div>
               <button
                 onClick={() => setShowConfirmModal(false)}
-                style={{ background: 'none', border: 'none', color: '#ffffff', fontWeight: 800, cursor: 'pointer', fontSize: '14px' }}
+                style={{ background: 'none', border: 'none', color: '#ffffff', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
               >
-                ✕
+                <X size={14} />
               </button>
             </div>
 
@@ -2233,8 +2413,8 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
             <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {/* Safety Alert */}
               <div style={{ padding: '12px', border: '2px solid #e63b2e', background: '#ffdad6', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                <div style={{ width: '18px', height: '18px', background: '#e63b2e', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '11px', flexShrink: 0 }}>
-                  !
+                <div style={{ width: '18px', height: '18px', background: '#e63b2e', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <AlertTriangle size={12} />
                 </div>
                 <div>
                   <div style={{ fontFamily: 'var(--font-headline)', fontWeight: 800, fontSize: '11px', textTransform: 'uppercase', color: '#cc0000' }}>
@@ -2307,9 +2487,9 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
               </div>
               <button
                 onClick={() => setIsDiagnosticsModalOpen(false)}
-                style={{ background: 'none', border: 'none', color: '#ffffff', fontWeight: 800, cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#ffffff', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
               >
-                ✕
+                <X size={14} />
               </button>
             </div>
 
@@ -2493,9 +2673,10 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({
                       <button
                         className="btn btn-primary"
                         onClick={() => handleRestoreHistoryItem(item)}
-                        style={{ fontSize: '10px', padding: '4px 10px', fontWeight: 800 }}
+                        style={{ fontSize: '10px', padding: '4px 10px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                       >
-                        ⚡ Restore & Resume
+                        <Zap size={11} />
+                        <span>Restore & Resume</span>
                       </button>
 
                       <button

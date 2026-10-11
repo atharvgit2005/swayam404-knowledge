@@ -37,6 +37,10 @@ export interface QuestionRecord {
   assignmentTitle?: string;
   unitId?: string;
   unitTitle?: string;
+  week?: string;
+  weekNumber?: number;
+  userSessionId?: string;
+  userEmail?: string;
   questionText: string;
   normalizedText?: string;
   questionType: QuestionType;
@@ -185,6 +189,7 @@ export interface AnswerBankExport {
 }
 
 export type LlmProviderType = 'gemini' | 'grok' | 'openai' | 'custom-proxy';
+export type WebAiProviderType = 'chatgpt' | 'claude' | 'gemini';
 
 export interface ExtensionSettings {
   theme: 'dark';
@@ -192,6 +197,7 @@ export interface ExtensionSettings {
   autoScanOnLoad: boolean;
   aiAssistedReviewEnabled: boolean;
   aiProvider?: LlmProviderType;
+  webAiProvider?: WebAiProviderType; // 'chatgpt' | 'claude' | 'gemini'
   aiApiKey?: string;
   aiModel?: string; // Default: 'gemini-1.5-flash'
   grokApiKey?: string;
@@ -205,6 +211,7 @@ export interface ExtensionSettings {
   autoApplyHighConfidence?: boolean; // Opt-in single-click fill for verified + high-evidence AI answers
   knowledgeBaseEnabled?: boolean;
   knowledgeBaseRepoUrl?: string;
+  courseCompletionModeActive?: boolean;
 }
 
 export type MaterialType = 'notes' | 'transcript' | 'pdf-text' | 'lecture-summary';
@@ -382,12 +389,16 @@ export interface ScanHistoryRecord {
 export interface PortalTabInfo {
   isSwayam: boolean;
   isChatGpt: boolean;
+  isWebAi?: boolean;
+  webAiProvider?: WebAiProviderType;
   isSupported: boolean;
   url?: string;
   tabTitle?: string;
   detectedCourseTitle?: string;
   detectedAssignmentTitle?: string;
   detectedExternalId?: string;
+  userSessionId?: string;
+  userEmail?: string;
   questionCount?: number;
   detectedWeek?: string;
   detectedWeekNumber?: number;
@@ -409,6 +420,8 @@ export interface PongMessage {
   detectedCourseTitle?: string;
   detectedAssignmentTitle?: string;
   detectedExternalId?: string;
+  userSessionId?: string;
+  userEmail?: string;
   questionCount?: number;
   detectedWeek?: string;
   detectedWeekNumber?: number;
@@ -429,6 +442,8 @@ export interface ScanResultMessage {
   pageTitle?: string;
   detectedCourseTitle?: string;
   detectedExternalId?: string;
+  userSessionId?: string;
+  userEmail?: string;
   detectedUnitId?: string;
   detectedAssessmentId?: string;
   detectedAssignmentTitle?: string;
@@ -490,6 +505,35 @@ export interface SinglePrepResultMessage {
   error?: string;
 }
 
+export interface SetCourseCompletionModeMessage {
+  type: 'SET_COURSE_COMPLETION_MODE';
+  enabled: boolean;
+  approvedTaskIds?: string[];
+}
+
+export interface ApplyCourseCompletionMessage {
+  type: 'APPLY_COURSE_COMPLETION_CHECKMARKS';
+  approvedTaskIds?: string[];
+}
+
+export interface ApproveAndSolveTaskMessage {
+  type: 'APPROVE_AND_SOLVE_TASK';
+  taskId: string;
+  taskTitle?: string;
+  unitTitle?: string;
+  taskUrl?: string;
+  autoTick?: boolean;
+}
+
+export interface CourseCompletionResultMessage {
+  type: 'COURSE_COMPLETION_RESULT';
+  success: boolean;
+  enabled: boolean;
+  appliedCount: number;
+  totalBlocks: number;
+  pendingQuizzes?: number;
+}
+
 export type ExtensionMessage =
   | PingMessage
   | PongMessage
@@ -501,4 +545,9 @@ export type ExtensionMessage =
   | PopulateResultMessage
   | CaptureFeedbackMessage
   | CaptureFeedbackResultMessage
-  | SinglePrepResultMessage;
+  | SinglePrepResultMessage
+  | SetCourseCompletionModeMessage
+  | ApplyCourseCompletionMessage
+  | ApproveAndSolveTaskMessage
+  | CourseCompletionResultMessage;
+

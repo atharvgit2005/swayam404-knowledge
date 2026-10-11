@@ -28,6 +28,8 @@ export interface ISiteAdapter {
     assessmentId?: string;
     detectedWeek?: string;
     detectedWeekNumber?: number;
+    userSessionId?: string;
+    userEmail?: string;
     isAlreadySubmitted?: boolean;
     submissionStatus?: SubmissionStatus;
   };
@@ -43,7 +45,13 @@ export interface ISiteAdapter {
     unitTitle?: string;
     capturedRecords: CapturedQuestionRecord[];
   };
+  applyCourseCompletionCheckmarks(
+    document: Document,
+    approvedTaskIds?: string[]
+  ): { appliedCount: number; totalBlocks: number; pendingQuizzes: number };
+  removeCourseCompletionCheckmarks(document: Document): void;
 }
+
 
 /**
  * Universal safe helper to dispatch input and change events for framework-controlled elements
@@ -405,27 +413,176 @@ export function extractQuestionText(container: HTMLElement, questionIdx: number)
  * Extracts week information from elements, breadcrumbs, titles, and URLs
  */
 export function extractWeekInfo(document: Document, url: string = ''): WeekInfo {
-  // 1. Breadcrumbs (highest accuracy on Swayam / NPTEL)
-  const breadcrumbElements = Array.from(
-    document.querySelectorAll<HTMLElement>(
-      '.breadcrumb-item, .breadcrumb li, nav[aria-label="breadcrumb"] li, .breadcrumbs a, .breadcrumbs span, .nav-breadcrumb'
-    )
-  );
-
-  for (const el of breadcrumbElements) {
-    const text = el.textContent?.trim() || '';
-    const match = text.match(/\bweek\s*(\d{1,2})\b/i);
+  // Helper to test if a text has a valid week match
+  const parseWeek = (text: string): WeekInfo | null => {
+    if (!text) return null;
+    const match = text.match(/\b(?:week|w)\s*(\d{1,2})\b/i);
     if (match) {
       const num = parseInt(match[1], 10);
       return {
         formattedWeek: `Week ${num}`,
         weekNumber: num,
-        rawText: text,
+        rawText: text.trim(),
       };
+    }
+    return null;
+  };
+
+  const parseAssignment = (text: string): WeekInfo | null => {
+    if (!text) return null;
+    const match = text.match(/\bassignment\s*(\d{1,2})\b/i);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      return {
+        formattedWeek: `Week ${num}`,
+        weekNumber: num,
+        rawText: text.trim(),
+      };
+    }
+    return null;
+  };
+
+  // 1. Check for active/currently selected item in sidebar or lesson navigation
+  const activeItemSelectors = [
+    'button[class*="bg-sky-50"]',
+    'button[class*="bg-blue-50"]',
+    'button[class*="text-blue-600"]',
+    'button[aria-current="page"]',
+    'button[aria-current="true"]',
+    'button.active',
+    'a.active',
+    'button[aria-selected="true"]',
+    'a[aria-selected="true"]',
+    '.unit-item.active',
+    '.lesson-item.active',
+    '.active-lesson',
+  ];
+
+  for (const sel of activeItemSelectors) {
+    const el = document.querySelector<HTMLElement>(sel);
+    if (el && el.textContent?.trim()) {
+      const text = el.textContent.trim();
+      const w = parseWeek(text) || parseAssignment(text);
+      if (w) return w;
+
+      // Check parent week list container (e.g. unit-6-list controlled by Week 6 button)
+      const parentList = el.closest('[id^="unit-"][id$="-list"]');
+      if (parentList) {
+        const controllingBtn = document.querySelector<HTMLElement>(`button[aria-controls="${parentList.id}"]`);
+        if (controllingBtn) {
+          const btnText = controllingBtn.textContent?.trim() || '';
+          const parentW = parseWeek(btnText);
+          if (parentW) return parentW;
+        }
+      }
     }
   }
 
-  // 2. Unit selectors (.unit-title, .week-header, .week-title, h3.unit, accordion headers, etc.)
+  // 2. URL mapping: check if URL unitId or assessmentId corresponds to a specific unit in the DOM
+  if (url) {
+    const unitMatch = url.match(/[?&]unit(?:Id)?=([a-zA-Z0-9_-]+)/i);
+    if (unitMatch) {
+      const uId = unitMatch[1];
+      const weekBtn = document.querySelector<HTMLElement>(`button[aria-controls="unit-${uId}-list"]`);
+      if (weekBtn) {
+        const btnText = weekBtn.textContent?.trim() || '';
+        const w = parseWeek(btnText);
+        if (w) return w;
+      }
+      const unitContainer = document.getElementById(`unit-${uId}-list`);
+      if (unitContainer) {
+        const h = unitContainer.querySelector('h2, h3, h4');
+        if (h && h.textContent) {
+          const w = parseWeek(h.textContent);
+          if (w) return w;
+        }
+      }
+    }
+
+    const assessMatch = url.match(/[?&]assessment(?:Id)?=([a-zA-Z0-9_-]+)/i);
+    if (assessMatch) {
+      const aId = assessMatch[1];
+      const linkEl = document.querySelector<HTMLElement>(
+        `[href*="assessmentId=${aId}"], [data-assessment-id="${aId}"]`
+      );
+      if (linkEl) {
+        const text = linkEl.textContent?.trim() || '';
+        const w = parseWeek(text) || parseAssignment(text);
+        if (w) return w;
+
+        const parentList = linkEl.closest('[id^="unit-"][id$="-list"]');
+        if (parentList) {
+          const controllingBtn = document.querySelector<HTMLElement>(
+            `button[aria-controls="${parentList.id}"]`
+          );
+          if (controllingBtn) {
+            const btnW = parseWeek(controllingBtn.textContent?.trim() || '');
+            if (btnW) return btnW;
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Currently expanded week accordion (if any week button has aria-expanded="true")
+  const expandedWeekButtons = Array.from(
+    document.querySelectorAll<HTMLElement>('button[aria-expanded="true"][aria-controls^="unit-"]')
+  );
+  for (const btn of expandedWeekButtons) {
+    const text = btn.textContent?.trim() || '';
+    const w = parseWeek(text);
+    if (w && w.weekNumber !== undefined && w.weekNumber > 0) {
+      return w;
+    }
+  }
+  // If only Week 0 is expanded and no other week is expanded
+  if (expandedWeekButtons.length === 1) {
+    const text = expandedWeekButtons[0].textContent?.trim() || '';
+    const w = parseWeek(text);
+    if (w) return w;
+  }
+
+  // 4. Breadcrumbs (highest accuracy on Swayam / NPTEL)
+  const breadcrumbElements = Array.from(
+    document.querySelectorAll<HTMLElement>(
+      '.breadcrumb-item, .breadcrumb li, nav[aria-label="breadcrumb"] li, .breadcrumbs a, .breadcrumbs span, .nav-breadcrumb'
+    )
+  );
+  for (const el of breadcrumbElements) {
+    const text = el.textContent?.trim() || '';
+    const w = parseWeek(text);
+    if (w) return w;
+  }
+
+  // 5. Assignment / Quiz Headings in main content area (EXCLUDING navigation and sidebar)
+  const mainArea =
+    document.querySelector('main, #content, [role="main"], .course-content, .main-content') ||
+    document.body;
+
+  const headingSelectors = [
+    '.assignment-title',
+    '.quiz-title',
+    '.qt-assignment-title',
+    'h1.header',
+    'h2.header',
+    'h1',
+    'h2',
+    '.header p',
+  ];
+
+  for (const sel of headingSelectors) {
+    const elements = Array.from(mainArea.querySelectorAll<HTMLElement>(sel));
+    for (const el of elements) {
+      if (el.closest('nav, aside, .sidebar, #course-outline, [aria-controls^="unit-"]')) {
+        continue;
+      }
+      const text = el.textContent?.trim() || '';
+      const w = parseWeek(text) || parseAssignment(text);
+      if (w) return w;
+    }
+  }
+
+  // 6. Active unit card / active week-header (excluding collapsed accordion headers)
   const unitSelectors = [
     '.week-header',
     '.week-title',
@@ -441,80 +598,21 @@ export function extractWeekInfo(document: Document, url: string = ''): WeekInfo 
   for (const sel of unitSelectors) {
     const el = document.querySelector<HTMLElement>(sel);
     if (el && el.textContent?.trim()) {
+      if (el.closest('button[aria-expanded="false"]')) continue;
       const text = el.textContent.trim();
-      const match = text.match(/\b(?:week|w)\s*(\d{1,2})\b/i);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        return {
-          formattedWeek: `Week ${num}`,
-          weekNumber: num,
-          rawText: text,
-        };
-      }
+      const w = parseWeek(text);
+      if (w) return w;
     }
   }
 
-  // 3. Assignment / Page Headings (.assignment-title, .quiz-title, h1, h2, h3, .header p)
-  const headingSelectors = [
-    '.assignment-title',
-    '.quiz-title',
-    '.qt-assignment-title',
-    'h1',
-    'h2',
-    'h3',
-    '.header p',
-  ];
-
-  for (const sel of headingSelectors) {
-    const el = document.querySelector<HTMLElement>(sel);
-    if (el && el.textContent?.trim()) {
-      const text = el.textContent.trim();
-      const weekMatch = text.match(/\b(?:week|w)\s*(\d{1,2})\b/i);
-      if (weekMatch) {
-        const num = parseInt(weekMatch[1], 10);
-        return {
-          formattedWeek: `Week ${num}`,
-          weekNumber: num,
-          rawText: text,
-        };
-      }
-      // If assignment has e.g. "Assignment 04" or "Assignment 4", map to Week 4 in SWAYAM
-      const assignMatch = text.match(/\bassignment\s*(\d{1,2})\b/i);
-      if (assignMatch) {
-        const num = parseInt(assignMatch[1], 10);
-        return {
-          formattedWeek: `Week ${num}`,
-          weekNumber: num,
-          rawText: text,
-        };
-      }
-    }
-  }
-
-  // 4. Document title
+  // 7. Document title
   if (document.title) {
     const title = document.title;
-    const weekMatch = title.match(/\b(?:week|w)\s*(\d{1,2})\b/i);
-    if (weekMatch) {
-      const num = parseInt(weekMatch[1], 10);
-      return {
-        formattedWeek: `Week ${num}`,
-        weekNumber: num,
-        rawText: title,
-      };
-    }
-    const assignMatch = title.match(/\bassignment\s*(\d{1,2})\b/i);
-    if (assignMatch) {
-      const num = parseInt(assignMatch[1], 10);
-      return {
-        formattedWeek: `Week ${num}`,
-        weekNumber: num,
-        rawText: title,
-      };
-    }
+    const w = parseWeek(title) || parseAssignment(title);
+    if (w) return w;
   }
 
-  // 5. URL query params or path (e.g. ?unit=3, /week3/, /week-3/)
+  // 8. Explicit URL week slug (/week-3/, /week3/, ?week=3, ?unit=7)
   if (url) {
     const urlWeek = url.match(/(?:week|w)[-_/]?(\d{1,2})/i);
     if (urlWeek) {
@@ -525,8 +623,8 @@ export function extractWeekInfo(document: Document, url: string = ''): WeekInfo 
         rawText: `URL: ${urlWeek[0]}`,
       };
     }
-    const urlUnit = url.match(/[?&]unit(?:Id)?=(\d{1,2})/i);
-    if (urlUnit) {
+    const urlUnit = url.match(/[?&]unit(?:Id)?=(\d{1,2})(?:&|$)/i);
+    if (urlUnit && !url.includes('swayam2.ac.in')) {
       const num = parseInt(urlUnit[1], 10);
       return {
         formattedWeek: `Week ${num}`,
@@ -534,6 +632,34 @@ export function extractWeekInfo(document: Document, url: string = ''): WeekInfo 
         rawText: `Unit ${num}`,
       };
     }
+    // For swayam2.ac.in with ?unit=N (e.g. unit=7)
+    const swayamUnit = url.match(/[?&]unit=(\d{1,2})(?:&|$)/i);
+    if (swayamUnit) {
+      const num = parseInt(swayamUnit[1], 10);
+      return {
+        formattedWeek: `Week ${num}`,
+        weekNumber: num,
+        rawText: `Unit ${num}`,
+      };
+    }
+  }
+
+  // 9. Fallback: check visible week headers (prefer non-zero over Week 0)
+  const allWeekHeaders = Array.from(
+    document.querySelectorAll<HTMLElement>('.week-header, .unit-title, button[aria-controls^="unit-"] h3')
+  );
+  for (const el of allWeekHeaders) {
+    const text = el.textContent?.trim() || '';
+    const w = parseWeek(text);
+    if (w && w.weekNumber !== undefined && w.weekNumber > 0) {
+      return w;
+    }
+  }
+
+  if (allWeekHeaders.length > 0) {
+    const text = allWeekHeaders[0].textContent?.trim() || '';
+    const w = parseWeek(text);
+    if (w) return w;
   }
 
   return {};
@@ -1085,6 +1211,8 @@ export class SwayamPortalAdapter implements ISiteAdapter {
     assessmentId?: string;
     detectedWeek?: string;
     detectedWeekNumber?: number;
+    userSessionId?: string;
+    userEmail?: string;
     isAlreadySubmitted?: boolean;
     submissionStatus?: SubmissionStatus;
   } {
@@ -1181,14 +1309,60 @@ export class SwayamPortalAdapter implements ISiteAdapter {
     const weekInfo = extractWeekInfo(document, url);
     const submissionStatus = detectSubmissionStatus(document);
 
+    // 7. Detect Student Account / User Session ID
+    let userEmail: string | undefined = undefined;
+    const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+    const userSelectors = [
+      '.user-email',
+      '.profile-email',
+      '[data-user-email]',
+      '.account-email',
+      '#user-email',
+      '.user-info',
+      '.profile-name',
+      '.user-profile',
+      'header .user-name',
+      'header .profile',
+      '.navbar .user',
+    ];
+
+    for (const sel of userSelectors) {
+      const el = document.querySelector<HTMLElement>(sel);
+      if (el && el.textContent) {
+        const text = el.textContent.trim();
+        const em = text.match(emailPattern);
+        if (em) {
+          userEmail = em[0];
+          break;
+        } else if (!userEmail && text.length > 2 && text.length < 50 && !text.includes('\n')) {
+          userEmail = text;
+        }
+      }
+    }
+
+    if (!userEmail) {
+      const headerEls = Array.from(document.querySelectorAll<HTMLElement>('header, nav, #header, .header'));
+      for (const h of headerEls) {
+        const em = (h.textContent || '').match(emailPattern);
+        if (em) {
+          userEmail = em[0];
+          break;
+        }
+      }
+    }
+
+    const userSessionId = externalId || (url.match(/courses?\/([a-zA-Z0-9_-]+)/i)?.[1]);
+
     return {
       courseTitle,
       externalId,
+      userSessionId,
+      userEmail,
       assignmentTitle,
       unitTitle,
       unitId,
       assessmentId,
-      detectedWeek: weekInfo.formattedWeek || (weekInfo.weekNumber ? `Week ${weekInfo.weekNumber}` : undefined),
+      detectedWeek: weekInfo.formattedWeek || (weekInfo.weekNumber !== undefined ? `Week ${weekInfo.weekNumber}` : undefined),
       detectedWeekNumber: weekInfo.weekNumber,
       isAlreadySubmitted: submissionStatus.isSubmitted,
       submissionStatus,
@@ -1242,7 +1416,7 @@ export class SwayamPortalAdapter implements ISiteAdapter {
 
     const allUnitCandidates = Array.from(
       root.querySelectorAll<HTMLElement>(
-        '.unit-card, .week-block, details, .accordion-item, .unit-container, section.week, .unit-item, .chapter, .section, ol.outline-item, div[class*="chapter"], div[class*="week"], div[class*="unit"], div[class*="module"], .card'
+        '.unit-card, .week-block, details, .accordion-item, .unit-container, section.week, .unit-item, .chapter, .section, ol.outline-item, div[class*="chapter"], div[class*="week"], div[class*="unit"], div[class*="module"], [id^="unit-"][id$="-list"], div[id*="unit-"], .card'
       )
     );
     // Keep only top-level units so nested sections aren't double-processed
@@ -1287,17 +1461,26 @@ export class SwayamPortalAdapter implements ISiteAdapter {
         type = 'assignment';
       }
 
+      const hasCompletedSvg =
+        el.querySelector(
+          'svg.lucide-circle-check, svg[class*="text-[#24C246]"], svg[class*="text-green"], svg.text-emerald-500, [data-status="completed"]'
+        ) !== null;
+
       const hasCompletedClass =
-        el.matches('.submitted, .completed, .done, .passed, [data-completed="true"], [class*="completed"], [class*="submitted"]') ||
-        el.querySelector('.submitted, .completed, .done, .passed, [data-completed="true"], .badge-success, [class*="completed"], [class*="submitted"]') !== null;
+        el.matches(
+          '.submitted, .completed, .done, .passed, [data-completed="true"], [data-swayam404-completed="true"], [class*="completed"], [class*="submitted"]'
+        ) ||
+        el.querySelector(
+          '.submitted, .completed, .done, .passed, [data-completed="true"], [data-swayam404-completed="true"], .badge-success, [class*="completed"], [class*="submitted"]'
+        ) !== null;
 
       const completionTextMatches = /submitted|score\s*:\s*\d+|completed|graded|points\s*earned|100%/i.test(rawText);
-      const portalReportedComplete = hasCompletedClass || completionTextMatches;
+      const portalReportedComplete = hasCompletedSvg || hasCompletedClass || completionTextMatches;
 
       let portalStatusText: string | undefined = undefined;
       if (portalReportedComplete) {
         const scoreMatch = rawText.match(/score\s*:\s*\d+(?:\.\d+)?%?/i);
-        portalStatusText = scoreMatch ? scoreMatch[0] : 'Submitted';
+        portalStatusText = scoreMatch ? scoreMatch[0] : (hasCompletedSvg ? 'Completed' : 'Submitted');
       }
 
       let status: TaskStatus = 'not-scanned';
@@ -1335,22 +1518,28 @@ export class SwayamPortalAdapter implements ISiteAdapter {
 
     if (unitElements.length > 0) {
       for (const unit of unitElements) {
-        const unitTitleEl = unit.querySelector(
+        let unitTitleEl = unit.querySelector(
           'summary, .unit-title, .chapter-title, .section-title, h2, h3, h4, .week-header, .header, button[class*="title"], [class*="chapter-title"], [class*="section-title"]'
         );
+        if (!unitTitleEl && unit.id) {
+          const controllingBtn = document.querySelector<HTMLElement>(`button[aria-controls="${unit.id}"]`);
+          if (controllingBtn) {
+            unitTitleEl = controllingBtn.querySelector('h3, h2, h4') || controllingBtn;
+          }
+        }
         const unitTitle = unitTitleEl?.textContent?.trim().replace(/\s+/g, ' ') || 'Unit';
 
-        // Prefer task row elements (.task-row, .lesson-item, .assessment-item, .subsection, .vertical, li)
+        // Prefer task row elements (.task-row, .lesson-item, .assessment-item, .subsection, .vertical, li, button/a items)
         let items = Array.from(
           unit.querySelectorAll<HTMLElement>(
-            '.task-row, .lesson-item, .assessment-item, .subsection, .vertical, li'
+            '.task-row, .lesson-item, .assessment-item, .subsection, .vertical, li, button[class*="items-start"], a[class*="items-start"]'
           )
         );
 
         if (items.length === 0) {
           items = Array.from(
             unit.querySelectorAll<HTMLElement>(
-              'a.outline-button, a.unit-link, a[href*="jump_to_id"], a[href*="assignment"], a[href*="assessment"], a[href*="quiz"], a[href*="courseware"]'
+              'button, a.outline-button, a.unit-link, a[href*="jump_to_id"], a[href*="assignment"], a[href*="assessment"], a[href*="quiz"], a[href*="courseware"]'
             )
           );
         }
@@ -1418,6 +1607,200 @@ export class SwayamPortalAdapter implements ISiteAdapter {
       tasks,
     };
   }
+
+  /**
+   * Course Completion Mode: Applies green checkmarks to items in the course sidebar
+   * according to user approval and quiz completion rules.
+   *
+   * Crucial Rule: A quiz/assignment block is NOT completed unless it is natively submitted
+   * OR explicitly approved & populated by the student. Unfinished quizzes without ticked options
+   * are held in pending status until student approval.
+   */
+  applyCourseCompletionCheckmarks(
+    document: Document,
+    approvedTaskIds: string[] = []
+  ): { appliedCount: number; totalBlocks: number; pendingQuizzes: number } {
+    const checkSvgHtml = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check h-4 w-4 text-[#24C246]" data-swayam404-check="true" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>`;
+
+    // 1. Expand all collapsed week/unit accordions across the entire course outline
+    const collapsedWeekButtons = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(
+        'nav[aria-label*="outline" i] button[aria-expanded="false"], button[aria-controls^="unit-"][aria-expanded="false"], button[aria-expanded="false"]'
+      )
+    ).filter((btn) => {
+      const txt = (btn.textContent || '').trim();
+      return /week\s*\d+|module\s*\d+|unit\s*\d+|chapter\s*\d+|part\s*\d+/i.test(txt);
+    });
+
+    for (const btn of collapsedWeekButtons) {
+      try {
+        btn.click();
+      } catch {
+        btn.setAttribute('aria-expanded', 'true');
+      }
+    }
+
+    // 2. Find all unit list containers or sidebar items across all weeks
+    const unitLists = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '[id^="unit-"][id$="-list"], [id*="-list"], .unit-list, .course-units, #course-outline, nav.sidebar, nav[aria-label*="outline" i]'
+      )
+    );
+
+    const rawItems: HTMLElement[] = [];
+    if (unitLists.length > 0) {
+      unitLists.forEach((list) => {
+        const listItems = Array.from(
+          list.querySelectorAll<HTMLElement>('button, a, .task-row, .lesson-item, .assessment-item')
+        );
+        listItems.forEach((item) => {
+          // Keep leaf elements only
+          if (!listItems.some((other) => other !== item && item.contains(other))) {
+            const raw = item.textContent?.trim() || '';
+            if (raw.length > 2 && !/^(?:expand|collapse|menu|home|course|info|discussion)$/i.test(raw)) {
+              rawItems.push(item);
+            }
+          }
+        });
+      });
+    } else {
+      const generalItems = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          '.task-row, .lesson-item, .assessment-item, button[class*="items-start"], a[class*="items-start"]'
+        )
+      );
+      rawItems.push(...generalItems);
+    }
+
+    const items = Array.from(new Set(rawItems));
+
+    let appliedCount = 0;
+    let pendingQuizzes = 0;
+
+    for (const item of items) {
+      const raw = item.textContent?.trim() || '';
+      const isQuizOrAssignment = /quiz|assignment|test|assessment/i.test(raw);
+
+      // Check if native portal checkmark already exists from real submission
+      const hasNativeGreenCheck =
+        item.getAttribute('data-swayam404-native') === 'true' ||
+        (item.querySelector('svg.lucide-circle-check, svg[class*="text-[#24C246]"], svg[class*="text-green"]') !== null &&
+          !item.querySelector('[data-swayam404-check]') &&
+          !item.hasAttribute('data-swayam404-completed'));
+
+      if (hasNativeGreenCheck) {
+        item.setAttribute('data-swayam404-native', 'true');
+      }
+
+      // Check if student approved this task (either via attribute or ID list)
+      const isApproved =
+        item.getAttribute('data-swayam404-approved') === 'true' ||
+        approvedTaskIds.some((id) => {
+          if (!id) return false;
+          const cleanId = id.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const cleanRaw = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
+          return cleanRaw.includes(cleanId) || cleanId.includes(cleanRaw) || (item.id && item.id.includes(id));
+        });
+
+      // Strict Completion Rule: Quizzes must NEVER have artificial green checkmarks injected onto them!
+      if (isQuizOrAssignment) {
+        item.removeAttribute('data-swayam404-completed');
+        const fakeSvg = item.querySelector('[data-swayam404-check]');
+        if (fakeSvg) fakeSvg.remove();
+
+        if (!hasNativeGreenCheck && !isApproved) {
+          pendingQuizzes++;
+        }
+        // Quizzes never receive injected checkmark SVGs
+        continue;
+      }
+
+      item.setAttribute('data-swayam404-completed', 'true');
+
+      const hasGreenCheck = item.querySelector('svg.lucide-circle-check, svg[class*="text-[#24C246]"]');
+      if (!hasGreenCheck) {
+        const existingSvg = item.querySelector('svg');
+        if (existingSvg) {
+          const wrapper = existingSvg.parentElement;
+          if (wrapper) {
+            wrapper.innerHTML = checkSvgHtml;
+            appliedCount++;
+          } else {
+            existingSvg.outerHTML = checkSvgHtml;
+            appliedCount++;
+          }
+        } else {
+          const iconWrapper = item.querySelector('.inline-flex') || item.firstElementChild;
+          if (iconWrapper) {
+            iconWrapper.innerHTML = checkSvgHtml;
+            appliedCount++;
+          } else {
+            const span = document.createElement('span');
+            span.setAttribute('data-swayam404-check', 'true');
+            span.className = 'inline-flex items-center pt-[3px] mr-2';
+            span.innerHTML = checkSvgHtml;
+            item.insertBefore(span, item.firstChild);
+            appliedCount++;
+          }
+        }
+      }
+    }
+
+    const completedBlocks = items.length - pendingQuizzes;
+    const progressPercent = items.length > 0 ? Math.round((completedBlocks / items.length) * 100) : 100;
+
+    // 3. Update Course Progress text indicators across the page
+    const allSpans = Array.from(document.querySelectorAll<HTMLElement>('span, p, small, [data-progress-text]'));
+    for (const el of allSpans) {
+      if (
+        el.childElementCount <= 2 &&
+        el.textContent &&
+        /%\s*\(.*of.*\)/i.test(el.textContent) &&
+        !el.querySelector('button, [id$="-list"], .sidebar')
+      ) {
+        el.innerHTML = `<span class="text-gray-700 font-bold">${progressPercent}% </span><span>(${completedBlocks} of ${items.length})</span>`;
+      }
+    }
+
+    // Direct percentage text elements
+    const percentageSpans = Array.from(
+      document.querySelectorAll<HTMLElement>('span.text-gray-700.font-bold')
+    );
+    for (const span of percentageSpans) {
+      if (/%/.test(span.textContent || '')) {
+        span.textContent = `${progressPercent}% `;
+      }
+    }
+
+    // 4. Update Progress Bars
+    const progressBars = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '[role="progressbar"], .progress-bar, div[class*="bg-[#24C246]"], div[class*="rounded-full"][class*="bg-"]'
+      )
+    );
+    for (const bar of progressBars) {
+      bar.style.width = `${progressPercent}%`;
+      bar.setAttribute('aria-valuenow', `${progressPercent}`);
+    }
+
+    return { appliedCount, totalBlocks: items.length, pendingQuizzes };
+  }
+
+  /**
+   * Reverts course completion indicators
+   */
+  removeCourseCompletionCheckmarks(document: Document): void {
+    const completedItems = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-swayam404-completed="true"], [data-swayam404-approved="true"]')
+    );
+    for (const item of completedItems) {
+      item.removeAttribute('data-swayam404-completed');
+      item.removeAttribute('data-swayam404-approved');
+      const injectedCheck = item.querySelector('[data-swayam404-check]');
+      if (injectedCheck) injectedCheck.remove();
+    }
+  }
+
 
   captureAssignmentFeedback(
     document: Document,

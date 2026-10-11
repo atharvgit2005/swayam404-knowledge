@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Course, CourseMapping } from '@/types';
-import { ShieldAlert, Check } from 'lucide-react';
+import { ShieldAlert, Check, X } from 'lucide-react';
 
 interface CourseMappingModalProps {
   isOpen: boolean;
@@ -64,9 +64,9 @@ export const CourseMappingModal: React.FC<CourseMappingModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: '#ffffff', fontWeight: 800, cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: '#ffffff', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           >
-            ✕
+            <X size={14} />
           </button>
         </div>
 

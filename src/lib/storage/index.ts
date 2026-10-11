@@ -81,6 +81,7 @@ const DEFAULT_SETTINGS: ExtensionSettings = {
   autoScanOnLoad: false,
   aiAssistedReviewEnabled: false,
   aiProvider: 'gemini',
+  webAiProvider: 'chatgpt',
   aiModel: 'gemini-1.5-flash',
   grokModel: 'grok-2-latest',
   openaiModel: 'gpt-4o-mini',
@@ -272,6 +273,76 @@ export class StorageService {
     await setItem(STORAGE_KEYS.QUESTIONS, all.filter((q) => q.id !== id));
   }
 
+  /**
+   * Saves questions to Question Bank tagged with course, week, and user session ID
+   */
+  static async saveQuestionsForWeekAndSession(opts: {
+    courseId: string;
+    week?: string;
+    weekNumber?: number;
+    userSessionId?: string;
+    userEmail?: string;
+    questions: QuestionRecord[];
+  }): Promise<number> {
+    const all = await this.getQuestions();
+    const now = new Date().toISOString();
+    let savedCount = 0;
+
+    for (const q of opts.questions) {
+      const qNorm = normalizeQuestionText(q.questionText);
+      const existingIdx = all.findIndex((existing) => {
+        const sameCourse =
+          existing.courseId === opts.courseId ||
+          (opts.userSessionId && existing.externalCourseId === opts.userSessionId);
+        const sameText = normalizeQuestionText(existing.questionText) === qNorm;
+        return sameCourse && sameText;
+      });
+
+      const updatedRecord: QuestionRecord = {
+        ...q,
+        courseId: opts.courseId,
+        week: opts.week || q.week,
+        weekNumber: opts.weekNumber || q.weekNumber,
+        userSessionId: opts.userSessionId || q.userSessionId,
+        userEmail: opts.userEmail || q.userEmail,
+        updatedAt: now,
+        createdAt: existingIdx >= 0 ? all[existingIdx].createdAt : (q.createdAt || now),
+      };
+
+      if (existingIdx >= 0) {
+        all[existingIdx] = updatedRecord;
+      } else {
+        all.push(updatedRecord);
+      }
+      savedCount++;
+    }
+
+    await setItem(STORAGE_KEYS.QUESTIONS, all);
+    return savedCount;
+  }
+
+  /**
+   * Retrieves questions specifically filtered for course, week, and session ID
+   */
+  static async getQuestionsForWeekAndSession(opts: {
+    courseId: string;
+    week?: string;
+    userSessionId?: string;
+  }): Promise<QuestionRecord[]> {
+    const all = await this.getQuestions();
+    return all.filter((q) => {
+      const courseMatch =
+        q.courseId === opts.courseId ||
+        (opts.userSessionId && q.externalCourseId === opts.userSessionId) ||
+        (opts.userSessionId && q.userSessionId === opts.userSessionId);
+      if (!courseMatch) return false;
+      if (opts.week && q.week && q.week.toLowerCase() !== opts.week.toLowerCase()) {
+        return false;
+      }
+      return true;
+    });
+  }
+
   static async replaceQuestionsForCourse(courseId: string, questions: QuestionRecord[]): Promise<void> {
     const all = await this.getQuestions();
     const remaining = all.filter((q) => q.courseId !== courseId);
@@ -291,8 +362,8 @@ export class StorageService {
     if (settings && !settings.grokModel) {
       settings.grokModel = 'grok-2-latest';
     }
-    if (settings && settings.enableProviderFallback === undefined) {
-      settings.enableProviderFallback = true;
+    if (settings && !settings.webAiProvider) {
+      settings.webAiProvider = 'chatgpt';
     }
     return settings;
   }
@@ -433,6 +504,24 @@ export class StorageService {
     await setItem(STORAGE_KEYS.TASK_QUEUES, allQueues);
   }
 
+  static async getApprovedTaskIds(courseId: string): Promise<string[]> {
+    const all = await getItem<Record<string, string[]>>('swayam404_approved_tasks_v1', {});
+    return all[courseId] || [];
+  }
+
+  static async saveApprovedTaskIds(courseId: string, taskIds: string[]): Promise<void> {
+    const all = await getItem<Record<string, string[]>>('swayam404_approved_tasks_v1', {});
+    all[courseId] = taskIds;
+    await setItem('swayam404_approved_tasks_v1', all);
+  }
+
+  static async clearApprovedTaskIds(courseId: string): Promise<void> {
+    const all = await getItem<Record<string, string[]>>('swayam404_approved_tasks_v1', {});
+    delete all[courseId];
+    await setItem('swayam404_approved_tasks_v1', all);
+  }
+
+
   // --- Workflow Checkpoints ---
 
   static async getCheckpoint(courseId: string): Promise<WorkflowCheckpoint | undefined> {
@@ -499,9 +588,10 @@ export class StorageService {
     const settings = await this.getSettings();
     const isAiConfigured =
       !!settings.aiAssistedReviewEnabled &&
-      (settings.aiProvider === 'grok'
-        ? !!(settings.grokApiKey || settings.aiApiKey)
-        : !!settings.aiApiKey);
+      (!!settings.webAiProvider ||
+        (settings.aiProvider === 'grok'
+          ? !!(settings.grokApiKey || settings.aiApiKey)
+          : !!settings.aiApiKey));
 
     const isSampleData = totalStoredQuestions > 0 && sampleDataCount >= totalStoredQuestions * 0.8;
     const isReadyForPrep = usableAnswersCount > 0 || isAiConfigured;
@@ -511,18 +601,26 @@ export class StorageService {
 
     if (totalStoredQuestions === 0) {
       if (isAiConfigured) {
-        readinessReason = `AI Ready: No historical answers saved yet. ${
-          settings.aiProvider === 'grok' ? 'xAI Grok' : 'Google Gemini'
+        readinessReason = `Web AI Ready: No historical answers saved yet. ${
+          settings.webAiProvider === 'claude'
+            ? 'Claude Web'
+            : settings.webAiProvider === 'gemini'
+            ? 'Gemini Web'
+            : settings.webAiProvider === 'chatgpt'
+            ? 'ChatGPT Web'
+            : settings.aiProvider === 'grok'
+            ? 'xAI Grok'
+            : 'Google Gemini'
         } & course materials active for new questions.`;
       } else {
         readinessReason =
-          'No historical answers are saved for this course yet (empty bank). Swayam404 will use available course materials and your configured AI provider.';
+          'No historical answers are saved for this course yet (empty bank). Swayam404 will use available course materials and your configured Web AI bridge.';
       }
     } else if (usableAnswersCount === 0) {
       if (isAiConfigured) {
-        readinessReason = 'Stored questions lack verified answers. Active AI provider will assist with question analysis.';
+        readinessReason = 'Stored questions lack verified answers. Active Web AI provider will assist with question analysis.';
       } else {
-        readinessReason = 'Stored questions have no recorded answers. Mark answers as verified or configure AI in Settings.';
+        readinessReason = 'Stored questions have no recorded answers. Mark answers as verified or configure Web AI in Settings.';
       }
     } else if (isSampleData) {
       sampleDataWarning = 'Current answer bank contains fictional sample data. Not verified for graded submissions.';
@@ -768,6 +866,12 @@ export class StorageService {
       STORAGE_KEYS.KB_CONTRIBUTION_PROPOSALS,
       list.filter((p) => p.proposalId !== proposalId)
     );
+  }
+
+  static parseWeekNumber(weekStr?: string): number | undefined {
+    if (!weekStr) return undefined;
+    const match = weekStr.match(/\b(?:week|w)\s*(\d+)\b/i);
+    return match ? parseInt(match[1], 10) : undefined;
   }
 }
 

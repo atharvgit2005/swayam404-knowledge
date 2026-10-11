@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   FileText,
+  X,
 } from 'lucide-react';
 
 interface ChatGptImportModalProps {
@@ -146,10 +147,11 @@ export const ChatGptImportModal: React.FC<ChatGptImportModalProps> = ({
               color: '#ffffff',
               fontWeight: 800,
               cursor: 'pointer',
-              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
             }}
           >
-            ✕
+            <X size={14} />
           </button>
         </div>
 
@@ -355,11 +357,17 @@ export const ChatGptImportModal: React.FC<ChatGptImportModalProps> = ({
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '12px', fontSize: '10px', fontFamily: 'var(--font-mono)' }}>
-                    <span>✓ Valid: {validationResult.matchedCount}</span>
-                    <span>⚠ Skipped: {validationResult.skippedCount}</span>
+                  <div style={{ display: 'flex', gap: '12px', fontSize: '10px', fontFamily: 'var(--font-mono)', alignItems: 'center' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                      <Check size={10} /> Valid: {validationResult.matchedCount}
+                    </span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                      <AlertTriangle size={10} /> Skipped: {validationResult.skippedCount}
+                    </span>
                     {validationResult.invalidCount > 0 && (
-                      <span style={{ color: '#cc0000' }}>✕ Invalid: {validationResult.invalidCount}</span>
+                      <span style={{ color: '#cc0000', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        <X size={10} /> Invalid: {validationResult.invalidCount}
+                      </span>
                     )}
                   </div>
 
@@ -390,9 +398,13 @@ export const ChatGptImportModal: React.FC<ChatGptImportModalProps> = ({
                             padding: '1px 5px',
                             fontWeight: 700,
                             whiteSpace: 'nowrap',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
                           }}
                         >
-                          ✓ {item.matchedOptionTexts.join(', ')}
+                          <Check size={9} />
+                          <span>{item.matchedOptionTexts.join(', ')}</span>
                         </span>
                       </div>
                     ))}

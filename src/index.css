@@ -35,6 +35,7 @@
   /* Compatibility Tokens */
   --bg-primary: #f5f0e8;
   --bg-surface: #eee9e0;
+  --bg-surface-container: #eee9e0;
   --bg-surface-elevated: #ffffff;
   --bg-card: #ffffff;
   --bg-card-hover: #f2ede5;
@@ -789,6 +790,7 @@ details.brutal-details summary {
     /* Compatibility Tokens */
     --bg-primary: #121214;
     --bg-surface: #18181b;
+    --bg-surface-container: #222226;
     --bg-surface-elevated: #1e1e22;
     --bg-card: #18181b;
     --bg-card-hover: #222226;
@@ -1025,6 +1027,7 @@ html.dark, body.dark {
   /* Compatibility Tokens */
   --bg-primary: #121214;
   --bg-surface: #18181b;
+  --bg-surface-container: #222226;
   --bg-surface-elevated: #1e1e22;
   --bg-card: #18181b;
   --bg-card-hover: #222226;

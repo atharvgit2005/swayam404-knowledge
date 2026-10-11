@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import {
   LayoutDashboard,
   GraduationCap,
@@ -7,7 +7,6 @@ import {
   ArrowDownUp,
   Settings,
   Activity,
-  ChevronDown,
 } from 'lucide-react';
 
 export type ActiveTab =
@@ -31,42 +30,11 @@ export const Navigation: React.FC<NavigationProps> = ({
   reviewCount = 0,
   onOpenDiagnostics,
 }) => {
-  const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const moreRef = useRef<HTMLDivElement>(null);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
-        setIsMoreOpen(false);
-      }
-    };
-    if (isMoreOpen) {
-      document.addEventListener('mousedown', handleOutsideClick);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-    };
-  }, [isMoreOpen]);
-
-  const isMoreActive =
-    activeTab === 'courses' || activeTab === 'import-export' || activeTab === 'settings';
-
-  const getMoreLabel = () => {
-    if (activeTab === 'courses') return 'More: Banks';
-    if (activeTab === 'import-export') return 'More: Import';
-    if (activeTab === 'settings') return 'More: Settings';
-    return 'More';
-  };
-
   return (
     <nav className="nav-tabs" style={{ position: 'relative' }}>
       <button
         className={`nav-tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
-        onClick={() => {
-          setIsMoreOpen(false);
-          onTabChange('dashboard');
-        }}
+        onClick={() => onTabChange('dashboard')}
       >
         <LayoutDashboard size={12} />
         <span>Dashboard</span>
@@ -74,10 +42,7 @@ export const Navigation: React.FC<NavigationProps> = ({
 
       <button
         className={`nav-tab-btn ${activeTab === 'scanner' ? 'active' : ''}`}
-        onClick={() => {
-          setIsMoreOpen(false);
-          onTabChange('scanner');
-        }}
+        onClick={() => onTabChange('scanner')}
       >
         <ScanLine size={12} />
         <span>Scan & Review</span>
@@ -100,154 +65,47 @@ export const Navigation: React.FC<NavigationProps> = ({
 
       <button
         className={`nav-tab-btn ${activeTab === 'course-completion' ? 'active' : ''}`}
-        onClick={() => {
-          setIsMoreOpen(false);
-          onTabChange('course-completion');
-        }}
+        onClick={() => onTabChange('course-completion')}
       >
         <GraduationCap size={12} />
-        <span>Course Progress</span>
+        <span>Progress</span>
       </button>
 
-      {/* "More" Secondary Navigation Menu */}
-      <div ref={moreRef} style={{ position: 'relative', display: 'inline-flex' }}>
+      <button
+        className={`nav-tab-btn ${activeTab === 'courses' ? 'active' : ''}`}
+        onClick={() => onTabChange('courses')}
+      >
+        <Layers size={12} />
+        <span>Banks</span>
+      </button>
+
+      <button
+        className={`nav-tab-btn ${activeTab === 'import-export' ? 'active' : ''}`}
+        onClick={() => onTabChange('import-export')}
+      >
+        <ArrowDownUp size={12} />
+        <span>Import/Export</span>
+      </button>
+
+      <button
+        className={`nav-tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
+        onClick={() => onTabChange('settings')}
+        title="Settings"
+      >
+        <Settings size={12} />
+        <span>Settings</span>
+      </button>
+
+      {onOpenDiagnostics && (
         <button
-          className={`nav-tab-btn ${isMoreActive ? 'active' : ''}`}
-          onClick={() => setIsMoreOpen((prev) => !prev)}
-          style={{ display: 'flex', alignItems: 'center', gap: '3px' }}
+          className="nav-tab-btn"
+          onClick={onOpenDiagnostics}
+          title="Open Diagnostics Trace"
+          style={{ padding: '4px 6px' }}
         >
-          <span>{getMoreLabel()}</span>
-          <ChevronDown size={11} style={{ transform: isMoreOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+          <Activity size={12} />
         </button>
-
-        {isMoreOpen && (
-          <div
-            className="nav-more-dropdown"
-            style={{
-              position: 'absolute',
-              top: '100%',
-              right: 0,
-              marginTop: '4px',
-              background: 'var(--bg-surface-elevated, #ffffff)',
-              border: '2px solid var(--border-medium, #1a1a1a)',
-              boxShadow: '4px 4px 0px var(--shadow-brutal, #1a1a1a)',
-              zIndex: 50,
-              minWidth: '170px',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            <button
-              onClick={() => {
-                setIsMoreOpen(false);
-                onTabChange('courses');
-              }}
-              className="nav-more-item"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 12px',
-                border: 'none',
-                borderBottom: '1px solid var(--border-subtle, #eee9e0)',
-                background: activeTab === 'courses' ? '#ffcc00' : 'transparent',
-                fontFamily: 'var(--font-headline)',
-                fontSize: '11px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                color: activeTab === 'courses' ? '#1a1a1a' : 'var(--text-main, #1a1a1a)',
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
-            >
-              <Layers size={13} />
-              <span>Courses & Banks</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setIsMoreOpen(false);
-                onTabChange('import-export');
-              }}
-              className="nav-more-item"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 12px',
-                border: 'none',
-                borderBottom: '1px solid var(--border-subtle, #eee9e0)',
-                background: activeTab === 'import-export' ? '#ffcc00' : 'transparent',
-                fontFamily: 'var(--font-headline)',
-                fontSize: '11px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                color: activeTab === 'import-export' ? '#1a1a1a' : 'var(--text-main, #1a1a1a)',
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
-            >
-              <ArrowDownUp size={13} />
-              <span>Import / Export</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setIsMoreOpen(false);
-                onTabChange('settings');
-              }}
-              className="nav-more-item"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 12px',
-                border: 'none',
-                borderBottom: onOpenDiagnostics ? '1px solid var(--border-subtle, #eee9e0)' : 'none',
-                background: activeTab === 'settings' ? '#ffcc00' : 'transparent',
-                fontFamily: 'var(--font-headline)',
-                fontSize: '11px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                color: activeTab === 'settings' ? '#1a1a1a' : 'var(--text-main, #1a1a1a)',
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
-            >
-              <Settings size={13} />
-              <span>Settings</span>
-            </button>
-
-            {onOpenDiagnostics && (
-              <button
-                onClick={() => {
-                  setIsMoreOpen(false);
-                  onOpenDiagnostics();
-                }}
-                className="nav-more-item"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '8px 12px',
-                  border: 'none',
-                  background: 'var(--bg-surface, #f2ede5)',
-                  fontFamily: 'var(--font-headline)',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  color: 'var(--text-main, #1a1a1a)',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <Activity size={13} />
-                <span>Diagnostics Trace</span>
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+      )}
     </nav>
   );
 };

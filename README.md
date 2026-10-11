@@ -1,172 +1,183 @@
-# swayam404 — AI-Powered SWAYAM/NPTEL Assignment Assistant (Chrome Extension)
+# 🎓 swayam404 — The SWAYAM/NPTEL Assignment Survival Kit
 
-A student-controlled, privacy-focused Chrome Extension (Manifest V3) built with **React**, **TypeScript**, and **Vite** that transforms course management on SWAYAM/NPTEL into an intelligent assistant: capturing confirmed answers from past submissions, retrieving course lecture context, requesting structured AI assistance for new quizzes, and automatically preparing quizzes without auto-submitting.
+[![Build & Test](https://img.shields.io/badge/tests-357%20passing-brightgreen.svg?style=flat-square)](file:///Users/atharvpaharia100/Desktop/Projects/swayaam-hacked)
+[![API Keys Required](https://img.shields.io/badge/API%20Keys-0%20(100%25%20FREE)-success.svg?style=flat-square)](file:///Users/atharvpaharia100/Desktop/Projects/swayaam-hacked)
+[![Student Sanity](https://img.shields.io/badge/Sanity-Preserved-blue.svg?style=flat-square)](file:///Users/atharvpaharia100/Desktop/Projects/swayaam-hacked)
+[![Side Eye Rating](https://img.shields.io/badge/Caution-Side%20Eye%20%F0%9F%91%80-critical.svg?style=flat-square)](file:///Users/atharvpaharia100/Desktop/Projects/swayaam-hacked)
+[![License](https://img.shields.io/badge/license-MIT-black.svg?style=flat-square)](file:///Users/atharvpaharia100/Desktop/Projects/swayaam-hacked)
 
----
+> **"Bro paid ₹1,000 for the NPTEL exam hall ticket just to scramble through Week 4 assignments at 11:58 PM on a Friday while SWAYAM's server runs on a single potato in an IIT basement."** — Every Engineering Student Ever.
 
-## ⚡ Core Philosophy & Safety Guarantees
+A modern, privacy-focused Chrome Extension (Manifest V3) built with **React**, **TypeScript**, and **Vite** that turns the painful weekly SWAYAM/NPTEL grind into a breeze. 
 
-1. **Strict Submission Immunity (Zero Auto-Submit)**: The extension **never** clicks `Submit`, `Final Submit`, or `Complete Assignment`. It never calls `form.submit()` or automates final grading. Students retain 100% review control before submission.
-2. **Zero Credential Harvesting**: The extension never reads, stores, or transmits your SWAYAM session cookies, passwords, authentication tokens, or personal identifiers. It operates entirely within your existing authenticated browser tab.
-3. **Strict Course Isolation**: Economics and Entrepreneurship answer banks remain completely isolated. Answers are never cross-pollinated between different courses without explicit confirmation.
-4. **Local Knowledge Base by Default**: Answer banks, lecture notes, and assignment records are stored in `chrome.storage.local`. External AI requests to Google Gemini are opt-in, disabled by default, and require your explicit API key.
-5. **Honest Verification States**: AI suggestions and score-only feedback are never labeled as verified. The extension distinguishes `portal-confirmed`, `student-reviewed`, `ai-suggested`, `unverified`, and `conflicted` records.
-
----
-
-## 🚀 Major Upgrades & New Features
-
-### 1. Robust Live-Page Connection & Handshake
-- Fixes the `"Could not connect to page"` issue on `https://onlinecourses.swayam2.ac.in/...` and `nptel.ac.in`.
-- Uses a unified `PageConnectionService`:
-  - Active tab URL validation with descriptive actionable error messages.
-  - PING/PONG readiness handshake between popup and content script.
-  - Automatic dynamic script injection via `chrome.scripting.executeScript` fallback if content script isn't pre-loaded.
-  - Concurrency locking preventing duplicate parallel scans.
-
-### 2. Feature A — Answer Capture from Completed Assignments
-- **`Capture Correct Answers` button**: Inspects submitted assignments with visible feedback.
-- Detects explicit portal-confirmed answers:
-  - Option-level green checkmarks and `.correct` badges.
-  - Question-level `Accepted Answers:` feedback blocks.
-  - Portal-provided explanations.
-- **Never infers correctness from student selection alone** (student may have chosen an incorrect option).
-- **Never infers correctness from score alone** (score without option indication is classified as `unverified` with a warning).
-- **Interactive Capture Preview Modal**: Preview captured answers, select individual questions, and confirm target course.
-- **Deduplication & Conflict Detection**: Updates existing records or flags conflicts (`conflicted`) when answers differ.
-
-### 3. Feature B — Course Identity & Answer-Bank Readiness
-- Decouples portal course identity (`onlinecourses.swayam2.ac.in/e-learning/course/ini26_cm22`), external course IDs, and local course profiles (`course-econ-101`, `course-ent-201`).
-- Real-time pre-flight readiness breakdown:
-  - Total stored questions.
-  - Portal-confirmed records.
-  - Student-reviewed records.
-  - AI-suggested records.
-  - Conflicted records.
-  - Clear guidance when bank is empty.
-
-### 4. Feature C — Google Gemini LLM Integration
-- Pluggable `ILlmProvider` abstraction for Google Gemini.
-- Configurable models: `gemini-1.5-flash` (fast & recommended), `gemini-1.5-pro`, `gemini-2.0-flash`.
-- In-UI "Test Connection" button with live status feedback.
-- Context-limited structured prompt sending only:
-  - Detected course and topic.
-  - Question text and question type.
-  - Visible options list.
-  - Relevant local course excerpts.
-- Strict machine-readable JSON response schema:
-  - `questionId`, `recommendedAnswers`, `explanation`, `evidence`, `basis`, `uncertaintyReasons`, `needsReview`.
-- Rigorous output validation:
-  - Hallucinated or non-existent options are rejected and flagged.
-  - Single-choice constraint enforced.
-  - AI reasoning without direct course evidence flags `needsReview: true`.
-
-### 5. Feature D — Local Course-Context Retrieval
-- `CourseMaterialRetrievalService`: Local keyword-relevance search across student-provided lecture notes and transcripts.
-- Distinguishes actual lecture excerpts from generated AI explanations.
-- Stored locally per course in `chrome.storage.local`.
-
-### 6. Feature E — One-Click Quiz Preparation & Safe Auto-Fill
-- **Primary `Prepare Quiz` action**:
-  1. Identifies course, assignment, and visible questions.
-  2. Matches historical verified answers.
-  3. Sends unmatched questions to Gemini with retrieved course context (if AI enabled).
-  4. Builds proposed answer set.
-  5. If `autoApplyHighConfidence` is ON: automatically populates exact verified answers and high-evidence AI recommendations.
-  6. If OFF: presents proposed choices for 1-click review and apply.
-- **Checkbox unchecking**: Checks target choices AND unchecks previously pre-selected wrong choices.
-- **Radio uniqueness**: Ensures single selection for single-choice questions.
-- React-controlled input support via native descriptor dispatch.
+**NO API KEYS. NO PAID SUBSCRIPTIONS. NO CLOUD LOGINS.** Just direct client-side superpowers, seamless Web AI bridging (ChatGPT, Claude & Gemini Web), verified question banks, and safe DOM auto-filling.
 
 ---
 
-## 🛠️ Installation in Brave / Chrome
+## 💀 Why Does This Exist? (The Universal Trauma)
 
-1. Open **Brave** (or Google Chrome).
-2. Go to `brave://extensions` (or `chrome://extensions`).
-3. Toggle on **Developer mode** (top-right switch).
-4. Click **Load unpacked** (top-left button).
-5. Select the **`dist/`** directory in this repository:
-   ```
-   /Users/atharvpaharia100/Desktop/Projects/swayam404/dist
-   ```
-6. Pin **swayam404** to your browser toolbar!
+Let's be completely honest with each other:
+1. **The Lectures**: A 45-minute monotone lecture recorded on a 2004 webcam with chalkboard dust flying everywhere and audio captured through a broken headphone mic. Playing at 2.5x speed still feels like slow motion.
+2. **The 11:59 PM Deadline**: Every single Friday night, thousands of panicked engineering students log in simultaneously, causing SWAYAM's fragile servers to throw instant `504 Gateway Timeout` errors.
+3. **The Questions**: 10 questions testing some microscopic footnote on slide 47 that wasn't even mentioned in the video, recycled verbatim from the 2018 question bank.
+
+**swayam404** exists so you can survive the semester, keep your credit requirements intact, and get back to actually learning things you care about.
 
 ---
 
-## 🔑 Configuring Google Gemini
+## 👀 ⚠️ CAUTION: DON'T EVER TRY THIS 👀
 
-1. Obtain a free Gemini API key from [Google AI Studio](https://aistudio.google.com/).
-2. Open the **swayam404** extension popup.
-3. Navigate to the **Settings** tab.
-4. Under **AI Integration (Google Gemini)**:
-   - Toggle **Enable**.
-   - Select your model (e.g. `gemini-1.5-flash`).
-   - Paste your API key (`AIzaSy...`).
-   - Click **Test Connection** to verify connectivity.
-   - Click **Save AI Config**.
-5. Optionally enable **Auto-Apply High-Confidence Suggestions** if you want single-click quiz preparation to automatically fill exact verified and evidence-backed answers.
+*(Bombastic Side Eye... Criminal Offensive Side Eye)*
+
+Look, we need to have a serious heart-to-heart before you install this:
+
+* **Don't ever flex a 100/100 score in the class WhatsApp group** where the course TA and professor are admins. Please have at least two functional brain cells. If you do this, you are on your own.
+* **If your attendance is 12%** and the professor doesn't even know what your face looks like, suddenly submitting flawless assignments with graduate-level reasoning might raise an eyebrow or two. Keep it humble.
+* **The "Zero Auto-Submit" rule is your lifeline**: The extension will scan the quiz, resolve the answers, and mark the checkboxes, but **YOU MUST CLICK THE SUBMIT BUTTON YOURSELF**. If you sit there waiting for the extension to submit at 11:59:59 PM and your Wi-Fi trips, do not open an angry GitHub issue crying to us.
+* **Canteen Rule**: If anyone asks where you got this from, you found an unmarked USB pendrive lying on a bench in the college canteen. You do not know who made it. We do not know you.
+* **Legal / Academic Satire Disclaimer**: This software is strictly an *open-source educational DOM inspection research experiment* demonstrating browser automation and client-side storage architecture. Any resemblance between your weekly 10/10 grade and actual academic enlightenment is purely coincidental.
 
 ---
 
-## 🧪 Automated Testing & Verification
+## ⚡ Key Superpowers (What It Actually Does)
 
-Run the test suite:
+### 1. 🆓 100% Free Web AI Bridge (Zero API Keys)
+Forget paying Sam Altman for OpenAI API credits or begging Google Cloud for Gemini API quotas.
+- Integrates with your **existing free browser sessions** of **ChatGPT Web**, **Claude Web**, and **Gemini Web**.
+- One-click **"Copy Prompt"** formats the scanned questions into a structured AI-optimized schema.
+- Uses floating browser bridges or clipboard transfer: paste into ChatGPT/Claude, copy the answers back, and click **"Fill Reviewed Answers"**.
+- Built-in provider toggler lets you switch seamlessly between ChatGPT, Claude, and Gemini with zero key configuration.
+
+### 2. 🎯 Precision DOM Marking (No Broken Portals)
+- Automatically checks the correct radio buttons and checkboxes directly in the SWAYAM page DOM.
+- **Auto-uncheck logic**: Correctly unselects previously clicked wrong choices.
+- Native React input descriptor dispatch: triggers SWAYAM's underlying React event listeners so the portal actually registers your selections.
+- **Strict Submission Immunity**: Never touches `Submit`, `Save & Submit`, or final grading forms. You retain 100% final review control.
+
+### 3. 📦 Shared Knowledge Base & GitHub Bank Sync
+- Sync verified course packs directly from public GitHub repositories (e.g. `swayam404-knowledge`).
+- Offline caching in `chrome.storage.local` with SHA-256 integrity verification.
+- Instant **"Take Answers from GitHub Bank"** loads historical confirmed answers right into your course profile.
+
+### 4. 📸 Graded Assignment Feedback Capture
+- After an assignment deadline passes and the portal displays correct solutions, hit **"Capture Graded Feedback"**.
+- Detects portal-confirmed badges, green checkmarks, and `Accepted Answers` blocks.
+- Distinguishes confirmed truths from student guesses, updating your local bank for future batches.
+
+### 5. 📅 Course Completion & 12-Week Syllabus Expander
+- Automatically unfolds all collapsed week accordions (Week 0 through Week 12) across the SWAYAM course outline.
+- Instant visual progress tracker so you always know how many quizzes you have left before the final exam.
+
+### 6. 🖤 High-Contrast Neo-Brutalist Aesthetic
+- Designed with bold borders, crisp tactile typography, and system-aware dark mode that automatically respects your OS theme.
+- Clean Lucide icons throughout — zero messy emojis or bloated UI libraries.
+
+---
+
+## 🛠️ Quick Installation (Takes 30 Seconds)
+
+### Step 1: Clone & Build
 ```bash
-npm test
-```
+# Clone the repository
+git clone https://github.com/atharvgit2005/swayaam-hacked.git
+cd swayaam-hacked
 
-Run TypeScript type check:
-```bash
-npm run typecheck
-```
+# Install dependencies
+npm install
 
-Build production bundle:
-```bash
+# Build the extension bundle
 npm run build
 ```
 
-### Test Coverage (67 Automated Tests across 8 Test Suites):
-- **Answer Capture (`answer-capture.test.ts`)**:
-  - Explicit option indicators (`.correct`, checkmarks).
-  - Accepted answers blocks below questions.
-  - Complete multiple-choice sets.
-  - Selected answers without feedback (not inferred as correct).
-  - Score-only feedback (not verified; warning attached).
-  - Short-text accepted answers.
-  - Duplicate captures & metadata updating.
-  - Conflict detection across differing captures.
-  - Strict course isolation.
-- **LLM Provider & Retrieval (`llm-provider.test.ts`)**:
-  - Structured JSON response parsing.
-  - Hallucinated option rejection.
-  - Single-choice constraint enforcement.
-  - Missing API key safety.
-  - Course excerpt retrieval & ranking.
-- **Page Connection & Population (`page-connection-and-fill.test.ts`)**:
-  - Live SWAYAM2 URL recognition (`onlinecourses.swayam2.ac.in`).
-  - Internal browser URL rejection.
-  - Checkbox unchecking of incorrect pre-selections.
-  - Submit button immunity.
-- **Course Completion (`course-completion.test.ts`)**:
-  - Outline discovery & completion detection.
-  - Readiness assessment.
-  - Task queue persistence & checkpoint pauses.
-- **Matcher, Storage, Normalizer, and Fixture integration tests**.
+### Step 2: Load into Chrome or Brave
+1. Open **Brave** or **Google Chrome**.
+2. Navigate to `brave://extensions` (or `chrome://extensions`).
+3. Toggle on **Developer mode** in the top-right corner.
+4. Click **Load unpacked** (top-left button).
+5. Select the **`dist/`** directory inside this project folder:
+   ```
+   path/to/swayaam-hacked/dist
+   ```
+6. Pin **swayam404** to your browser toolbar! 📌
 
 ---
 
-## 📂 Included Local HTML Fixtures
+## 🎮 How to Use (The 3-Step Routine)
 
-1. `dist/fixtures/submitted-feedback-assignment.html`: Evaluated assignment with correct badges, accepted answer blocks, explanations, score indicators, and wrong student choices.
-2. `dist/fixtures/economics-assignment.html`: Active Economics quiz with multiple-choice, radio, true/false, short text, and submit alerts.
-3. `dist/fixtures/entrepreneurship-assignment.html`: Active Entrepreneurship minor assignment.
-4. `dist/fixtures/economics-course-outline.html`: Multi-week syllabus with completed tasks, quizzes, and outline metadata.
+```
+[SWAYAM Assignment Tab] 
+        │
+        ▼ (Click "Scan Assignment")
+[swayam404 Extension] ──▶ Checks Local Bank / GitHub Knowledge Base
+        │
+        ├─ If answers exist: 1-Click "Fill Reviewed Answers" ──▶ Done!
+        │
+        └─ If brand new quiz:
+                │
+                ▼ (Click "Copy Prompt" & open ChatGPT / Claude / Gemini Web)
+           Paste Prompt ──▶ AI outputs structured JSON / letters
+                │
+                ▼ (Click "Send to Swayam404" or Paste)
+           swayam404 auto-marks all checkboxes on SWAYAM tab!
+                │
+                ▼ (Review with your own human eyes)
+           Click Submit manually! 🎉
+```
+
+1. **Open your weekly assignment** on `https://onlinecourses.swayam2.ac.in/...`.
+2. **Open swayam404** from your extensions bar and click **"Scan Assignment"**.
+3. If you have the GitHub bank synced, confirmed answers will light up immediately. Click **"Fill Reviewed Answers"**.
+4. For brand-new quizzes without cached answers, click **"1. Copy Prompt"**, paste into your open ChatGPT/Claude tab, and apply the answers back in one click.
+5. Review the selections and click the green **Submit** button yourself!
 
 ---
 
-## ⚠️ Notes & Portal Limitations
+## 🧪 Bulletproof Testing (357 Automated Tests)
 
-- Graded assignments must always be submitted by the student using the platform's native button.
-- Live portals may occasionally change DOM class names across terms. The `SwayamPortalAdapter` supports containers matching `.gcb-form-element`, `.qt-question`, `.assignment-question`, `.question-card`, and semantic `<fieldset>` elements.
-- When an assignment exposes no correct-answer feedback (e.g. before grading deadline), the extension correctly marks captured items as `unverified`.
+Even though we joke, this codebase is engineered like a tank. We run **357 automated unit and integration tests across 21 test suites** before every release:
+
+```bash
+# Run the entire automated test suite
+npm test
+
+# Run TypeScript typecheck
+npm run typecheck
+
+# Production build test
+npm run build
+```
+
+### What We Test:
+- **DOM Adapters & Injection**: Radio button selection, checkbox unchecking, React synthetic event triggering, and strict immunity against form submissions.
+- **Web AI Bridge**: Parsing structured multi-batch prompts, markdown format variations, and resilience against AI hallucinations.
+- **Knowledge Base Sync**: Offline fallback, SHA-256 integrity verification, and atomic cache preservation during network failures.
+- **Conflict Resolution**: Preventing wrong answers from overwriting portal-verified records.
+
+---
+
+## ❓ Frequently Anticipated Panics (FAQ)
+
+**Q: Do I need to buy an OpenAI API key or Google Cloud account?**  
+**A:** NO! Absolutely zero API keys are required. The extension uses your regular browser login for ChatGPT Web, Claude Web, or Gemini Web, plus the open-source GitHub question bank. It costs ₹0.00.
+
+**Q: Why didn't the extension submit the quiz for me?**  
+**A:** Because we care about your graduation. Auto-submitting without student confirmation is how people accidentally submit empty forms or wrong answers. You have full control. Always verify before you submit.
+
+**Q: Does this work on NPTEL and SWAYAM 2.0?**  
+**A:** Yes! It supports `onlinecourses.swayam2.ac.in` and standard NPTEL portal course containers.
+
+**Q: Will SWAYAM detect that I'm using an extension?**  
+**A:** The extension runs standard client-side DOM queries (just like clicking with a mouse). It makes zero unauthorized background API requests to SWAYAM's servers and never harvests authentication cookies.
+
+---
+
+## 🤝 Contributing & Community
+
+Found answers for a new course? Added a cleaner DOM selector?
+1. Fork the repository.
+2. Submit a PR or contribute course data to the `swayam404-knowledge` bank.
+3. Star the repo if this saved your internal assessment grades! ⭐
+
+---
+
+*Made with ☕ and desperation by engineers, for engineers.*

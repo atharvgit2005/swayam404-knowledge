@@ -13,6 +13,7 @@ import {
   RefreshCw,
   Eye,
   CheckCircle2,
+  X,
 } from 'lucide-react';
 
 interface DiagnosticsModalProps {
@@ -120,10 +121,11 @@ export const DiagnosticsModal: React.FC<DiagnosticsModalProps> = ({ isOpen, onCl
               color: '#ffffff',
               fontWeight: 800,
               cursor: 'pointer',
-              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
             }}
           >
-            ✕
+            <X size={14} />
           </button>
         </div>
 

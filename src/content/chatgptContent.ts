@@ -11,13 +11,28 @@
   if (globalScope.__swayamWebAiBridgeInstalled) return;
   globalScope.__swayamWebAiBridgeInstalled = true;
 
-  console.log('[swayam404] Web AI Assistant Auto-Pilot Bridge active.');
+  const currentHost = window.location.hostname.toLowerCase();
+  const currentProvider: 'chatgpt' | 'claude' | 'gemini' =
+    currentHost.includes('claude.ai')
+      ? 'claude'
+      : currentHost.includes('gemini.google.com')
+      ? 'gemini'
+      : 'chatgpt';
+
+  console.log(`[swayam404] Web AI Assistant Auto-Pilot Bridge active on ${currentProvider}.`);
 
   let lastSyncedText = '';
   let isWatchingGeneration = false;
   let statusPill: HTMLElement | null = null;
   let syncBtnRef: HTMLButtonElement | null = null;
   let insertBtnRef: HTMLButtonElement | null = null;
+
+  const SVG_ICONS = {
+    zap: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+    check: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><polyline points="20 6 9 17 4 12"/></svg>',
+    clipboard: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>',
+    close: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  };
 
   function updateStatus(statusText: string, color: string = '#1a1a1a', bg: string = '#f5f0e8') {
     if (statusPill) {
@@ -31,8 +46,11 @@
   function findPromptInput(): HTMLElement | null {
     return (
       document.querySelector('#prompt-textarea') ||
+      document.querySelector('rich-textarea div[contenteditable="true"]') ||
       document.querySelector('div[contenteditable="true"].ProseMirror') ||
+      document.querySelector('div.ql-editor') ||
       document.querySelector('fieldset div[contenteditable="true"]') ||
+      document.querySelector('div[contenteditable="true"][aria-label*="prompt" i]') ||
       document.querySelector('div[contenteditable="true"]') ||
       document.querySelector('textarea')
     ) as HTMLElement | null;
@@ -43,8 +61,9 @@
     return (
       document.querySelector('button[data-testid="send-button"]') ||
       document.querySelector('button[data-testid="composer-send-button"]') ||
-      document.querySelector('button[aria-label*="Send"]') ||
-      document.querySelector('button[aria-label*="send"]') ||
+      document.querySelector('button[aria-label*="Send" i]') ||
+      document.querySelector('button[aria-label*="send" i]') ||
+      document.querySelector('button.send-button') ||
       document.querySelector('button[aria-label="Send Message"]')
     ) as HTMLButtonElement | null;
   }
@@ -82,7 +101,7 @@
     } catch {}
 
     if (autoSubmit) {
-      updateStatus('⚡ Submitting to AI...', '#1a1a1a', '#ffcc00');
+      updateStatus('Submitting to AI...', '#1a1a1a', '#ffcc00');
       setTimeout(() => {
         const sendBtn = findSendButton();
         if (sendBtn && !sendBtn.disabled) {
@@ -92,7 +111,7 @@
             new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true })
           );
         }
-        updateStatus('⏳ AI Generating Answers...', '#2563eb', '#dbeafe');
+        updateStatus('AI Generating Answers...', '#2563eb', '#dbeafe');
         startAutoWatchLoop();
       }, 500);
     }
@@ -117,6 +136,15 @@
     document
       .querySelectorAll<HTMLElement>(
         'div.font-claude-message, [class*="font-claude-message"], [class*="standard-markdown"], div.claude-message'
+      )
+      .forEach((el) => {
+        if (!assistantCandidates.includes(el)) assistantCandidates.push(el);
+      });
+
+    // Gemini wrappers
+    document
+      .querySelectorAll<HTMLElement>(
+        'message-content, .model-response-text, .response-container, [class*="response-container"], div.response-body'
       )
       .forEach((el) => {
         if (!assistantCandidates.includes(el)) assistantCandidates.push(el);
@@ -195,7 +223,7 @@
       });
     }
 
-    const label = isAuto ? '⚡ Auto-Synced! Redirecting to SWAYAM...' : '✓ Sent! Redirecting to SWAYAM...';
+    const label = isAuto ? 'Auto-Synced! Redirecting to SWAYAM...' : 'Sent! Redirecting to SWAYAM...';
     updateStatus(label, '#065f46', '#d1fae5');
 
     // Trigger immediate background redirection to the active SWAYAM tab
@@ -211,7 +239,7 @@
           },
           (res) => {
             if (res?.success) {
-              updateStatus('✓ Switched to SWAYAM tab!', '#065f46', '#d1fae5');
+              updateStatus('Switched to SWAYAM tab!', '#065f46', '#d1fae5');
             }
           }
         );
@@ -219,7 +247,7 @@
     }
 
     if (syncBtnRef) {
-      syncBtnRef.textContent = '✓ Sent! Returning to Swayam...';
+      syncBtnRef.innerHTML = `${SVG_ICONS.check} <span>Sent! Returning to Swayam...</span>`;
       syncBtnRef.style.background = '#10b981';
       syncBtnRef.style.color = '#ffffff';
     }
@@ -276,7 +304,7 @@
       if (pollCount > 120) {
         clearInterval(timer);
         isWatchingGeneration = false;
-        updateStatus('⚪ Ready', '#1a1a1a', '#f5f0e8');
+        updateStatus('Ready', '#1a1a1a', '#f5f0e8');
       }
     }, 1500);
   }
@@ -285,26 +313,38 @@
   function checkAndAutoExecutePendingPrompt() {
     if (typeof chrome === 'undefined' || !chrome.storage?.local) return;
 
-    chrome.storage.local.get(['pendingChatGptPrompt'], (data) => {
-      const prompt = data?.pendingChatGptPrompt;
-      if (!prompt) return;
+    chrome.storage.local.get(
+      ['pendingChatGptPrompt', 'swayam404_settings_v1', 'webAiProvider'],
+      (data) => {
+        const activeSettingProvider =
+          data?.swayam404_settings_v1?.webAiProvider ||
+          data?.webAiProvider ||
+          'chatgpt';
 
-      updateStatus('⚡ Auto-Pilot: Inserting prompt...', '#1a1a1a', '#ffcc00');
-
-      let attempts = 0;
-      const findInterval = setInterval(async () => {
-        attempts++;
-        const inputEl = findPromptInput();
-        if (inputEl) {
-          clearInterval(findInterval);
-          chrome.storage.local.remove(['pendingChatGptPrompt']);
-          await insertPromptIntoChat(prompt, true);
-        } else if (attempts > 30) {
-          clearInterval(findInterval);
-          updateStatus('⚠️ Could not locate chat input', '#b91c1c', '#fee2e2');
+        if (currentProvider !== activeSettingProvider) {
+          return; // Do not auto-execute prompt on inactive AI window
         }
-      }, 400);
-    });
+
+        const prompt = data?.pendingChatGptPrompt;
+        if (!prompt) return;
+
+        updateStatus('Auto-Pilot: Inserting prompt...', '#1a1a1a', '#ffcc00');
+
+        let attempts = 0;
+        const findInterval = setInterval(async () => {
+          attempts++;
+          const inputEl = findPromptInput();
+          if (inputEl) {
+            clearInterval(findInterval);
+            chrome.storage.local.remove(['pendingChatGptPrompt']);
+            await insertPromptIntoChat(prompt, true);
+          } else if (attempts > 30) {
+            clearInterval(findInterval);
+            updateStatus('Could not locate chat input', '#b91c1c', '#fee2e2');
+          }
+        }, 400);
+      }
+    );
   }
 
   // 8. Create Neo-Brutalist Floating Badge UI
@@ -312,8 +352,12 @@
     if (document.getElementById('swayam404-chatgpt-badge')) return;
     if (!document.body) return;
 
-    const isClaude = window.location.hostname.includes('claude.ai');
-    const providerName = isClaude ? 'Claude Web' : 'ChatGPT Web';
+    const providerName =
+      currentProvider === 'claude'
+        ? 'Claude Web'
+        : currentProvider === 'gemini'
+        ? 'Gemini Web'
+        : 'ChatGPT Web';
 
     const container = document.createElement('div');
     container.id = 'swayam404-chatgpt-badge';
@@ -357,15 +401,16 @@
     title.innerHTML = `<span style="width:7px;height:7px;background:#ffcc00;display:inline-block;border:1px solid #1a1a1a"></span>SWAYAM 404 • ${providerName}`;
 
     const closeBtn = document.createElement('button');
-    closeBtn.textContent = '✕';
+    closeBtn.innerHTML = SVG_ICONS.close;
     closeBtn.style.cssText = `
       background: none;
       border: none;
       font-weight: 800;
       cursor: pointer;
-      font-size: 11px;
       color: #1a1a1a;
       padding: 2px 4px;
+      display: flex;
+      align-items: center;
     `;
     closeBtn.onclick = () => {
       if (typeof window !== 'undefined' && window.sessionStorage) {
@@ -397,7 +442,7 @@
       align-items: center;
       gap: 5px;
     `;
-    statusPill.textContent = '⚡ Auto-Pilot Ready';
+    statusPill.innerHTML = `${SVG_ICONS.zap} <span>Auto-Pilot Ready</span>`;
     container.appendChild(statusPill);
 
     const btnRow = document.createElement('div');
@@ -405,7 +450,7 @@
 
     // Manual Insert button
     insertBtnRef = document.createElement('button');
-    insertBtnRef.textContent = '📋 Insert Swayam Questions';
+    insertBtnRef.innerHTML = `${SVG_ICONS.clipboard} <span>Insert Swayam Questions</span>`;
     insertBtnRef.style.cssText = `
       background: #1a1a1a;
       color: #ffffff;
@@ -417,6 +462,10 @@
       text-transform: uppercase;
       box-shadow: 2px 2px 0px #1a1a1a;
       transition: background 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     `;
     insertBtnRef.onclick = () => {
       if (typeof chrome !== 'undefined' && chrome.storage?.local) {
@@ -427,10 +476,10 @@
             return;
           }
           await insertPromptIntoChat(prompt, false);
-          insertBtnRef!.textContent = '✓ Inserted! Press Enter';
+          insertBtnRef!.innerHTML = `${SVG_ICONS.check} <span>Inserted! Press Enter</span>`;
           insertBtnRef!.style.background = '#10b981';
           setTimeout(() => {
-            insertBtnRef!.textContent = '📋 Insert Swayam Questions';
+            insertBtnRef!.innerHTML = `${SVG_ICONS.clipboard} <span>Insert Swayam Questions</span>`;
             insertBtnRef!.style.background = '#1a1a1a';
           }, 4000);
         });
@@ -439,13 +488,17 @@
 
     // Manual Sync button
     syncBtnRef = document.createElement('button');
-    syncBtnRef.textContent = '⚡ Send Answers to Swayam404';
+    syncBtnRef.innerHTML = `${SVG_ICONS.zap} <span>Send Answers to Swayam404</span>`;
     syncBtnRef.style.cssText = `
       background: #ffcc00;
       color: #1a1a1a;
       border: 1.5px solid #1a1a1a;
       font-weight: 800;
       font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
       padding: 7px 10px;
       cursor: pointer;
       text-transform: uppercase;
@@ -480,14 +533,27 @@
       return callback(false);
     }
 
-    chrome.storage.local.get(['pendingChatGptPrompt', 'autoPilotActive', 'swayam_pilot_context'], (data) => {
-      const hasPrompt = Boolean(data?.pendingChatGptPrompt);
-      const isPilotActive = Boolean(data?.autoPilotActive);
-      const pilotTimestamp = data?.swayam_pilot_context?.timestamp || 0;
-      const isRecentPilot = pilotTimestamp > 0 && Date.now() - pilotTimestamp < 15 * 60 * 1000;
+    chrome.storage.local.get(
+      ['pendingChatGptPrompt', 'autoPilotActive', 'swayam_pilot_context', 'swayam404_settings_v1', 'webAiProvider'],
+      (data) => {
+        // Enforce active provider toggler: if current tab is not the selected provider, keep dormant
+        const activeSettingProvider =
+          data?.swayam404_settings_v1?.webAiProvider ||
+          data?.webAiProvider ||
+          'chatgpt';
 
-      callback(hasPrompt || (isPilotActive && isRecentPilot));
-    });
+        if (currentProvider !== activeSettingProvider) {
+          return callback(false);
+        }
+
+        const hasPrompt = Boolean(data?.pendingChatGptPrompt);
+        const isPilotActive = Boolean(data?.autoPilotActive);
+        const pilotTimestamp = data?.swayam_pilot_context?.timestamp || 0;
+        const isRecentPilot = pilotTimestamp > 0 && Date.now() - pilotTimestamp < 15 * 60 * 1000;
+
+        callback(hasPrompt || (isPilotActive && isRecentPilot));
+      }
+    );
   }
 
   function initBadgeIfActive() {
@@ -503,11 +569,16 @@
     });
   }
 
-  // Reactively mount when Swayam triggers an auto-solve session
+  // Reactively mount when Swayam triggers an auto-solve session or when provider toggle changes
   if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area === 'local') {
-        if (changes.pendingChatGptPrompt?.newValue || (changes.autoPilotActive && changes.autoPilotActive.newValue === true)) {
+        if (
+          changes.pendingChatGptPrompt?.newValue ||
+          (changes.autoPilotActive && changes.autoPilotActive.newValue === true) ||
+          changes.webAiProvider ||
+          changes.swayam404_settings_v1
+        ) {
           if (typeof window !== 'undefined' && window.sessionStorage) {
             window.sessionStorage.removeItem('swayam404_badge_dismissed');
           }

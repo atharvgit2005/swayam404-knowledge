@@ -252,9 +252,14 @@ export class AnswerResolutionPipeline {
     );
 
     if (answerBank.length > 0) {
-      // Find exact normalized match strictly isolated to selected course
+      // Find exact normalized match strictly isolated to selected course / session
       for (const rec of answerBank) {
-        if (rec.courseId && selectedCourse.id && rec.courseId !== selectedCourse.id) {
+        const isSameCourse =
+          !rec.courseId ||
+          !selectedCourse.id ||
+          rec.courseId === selectedCourse.id ||
+          (selectedCourse.externalCourseId && rec.externalCourseId === selectedCourse.externalCourseId);
+        if (!isSameCourse) {
           continue; // Enforce strict course isolation
         }
 

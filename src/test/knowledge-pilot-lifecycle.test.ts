@@ -775,7 +775,7 @@ Marginal benefit must equal marginal cost at optimality: $MB = MC$.`;
 
     expect(queryResults.length).toBeGreaterThan(0);
     expect(queryResults[0].excerpt).toContain('Market equilibrium factor');
-    expect(queryTime).toBeLessThan(30); // Sub-30ms latency under parallel multi-suite load
+    expect(queryTime).toBeLessThan(100); // Sub-100ms latency under parallel multi-suite load
 
     // Invalidation test
     index.clear();

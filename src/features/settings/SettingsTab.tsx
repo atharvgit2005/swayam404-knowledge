@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ExtensionSettings, Course, CourseMaterial } from '@/types';
+import { ExtensionSettings, Course, CourseMaterial, WebAiProviderType } from '@/types';
 import { StorageService } from '@/lib/storage';
 import {
   ShieldCheck,
@@ -14,6 +14,9 @@ import {
   RefreshCw,
   Database,
   AlertTriangle,
+  Bot,
+  Cpu,
+  Info,
 } from 'lucide-react';
 import { KnowledgeBaseService } from '@/lib/knowledge';
 import { KnowledgeSyncStatus } from '@/types/knowledge';
@@ -83,6 +86,39 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onRefreshData }) => {
     setSettings(updated);
     await StorageService.saveSettings({ autoApplyHighConfidence: enabled });
     triggerNotice();
+  };
+
+  const [isImportingFromGitHub, setIsImportingFromGitHub] = useState(false);
+
+  const handleSelectWebAiProvider = async (provider: WebAiProviderType) => {
+    if (!settings) return;
+    const updated = { ...settings, webAiProvider: provider };
+    setSettings(updated);
+    await StorageService.saveSettings({ webAiProvider: provider });
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      chrome.storage.local.set({ webAiProvider: provider });
+    }
+    triggerNotice();
+  };
+
+  const handleTakeAnswersFromGitHubBank = async () => {
+    setIsImportingFromGitHub(true);
+    setKbSyncMessage(null);
+    setKbSyncError(null);
+    try {
+      const activeCourseId = settings?.selectedCourseId || courses[0]?.id || 'course-ent-201';
+      const res = await KnowledgeBaseService.importAnswersForCourse(activeCourseId);
+      if (res.success) {
+        setKbSyncMessage(res.message);
+        await onRefreshData();
+      } else {
+        setKbSyncError(res.message);
+      }
+    } catch (e: unknown) {
+      setKbSyncError((e as Error)?.message || 'Failed to take answers from GitHub bank');
+    } finally {
+      setIsImportingFromGitHub(false);
+    }
   };
 
   const handleToggleKb = async (enabled: boolean) => {
@@ -286,13 +322,13 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onRefreshData }) => {
         </div>
       </div>
 
-      {/* Web AI (ChatGPT Web & Claude Web) Connection Section */}
+      {/* Web AI (ChatGPT Web, Claude Web & Gemini Web) Connection Section */}
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Sparkles size={16} style={{ color: 'var(--text-main)' }} />
             <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)', fontFamily: 'var(--font-headline)', textTransform: 'uppercase' }}>
-              Web AI Connection (ChatGPT Web & Claude Web)
+              Web AI Connection (ChatGPT, Claude & Gemini Web)
             </span>
           </div>
           <span style={{ fontSize: '10px', fontWeight: 800, background: 'var(--accent-hover)', padding: '2px 8px', border: '1.5px solid var(--border-medium)', color: '#1a1a1a' }}>
@@ -301,9 +337,68 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onRefreshData }) => {
         </div>
 
         <p style={{ fontSize: '11px', color: 'var(--text-main)', lineHeight: 1.5, margin: 0 }}>
-          Swayam404 connects directly to your signed-in browser sessions of <strong>ChatGPT</strong> (<code>chatgpt.com</code>) and <strong>Claude</strong> (<code>claude.ai</code>).
-          This completely bypasses API quota limits (such as Google 429 quota exhaustion) and requires zero paid API credits.
+          Swayam404 connects directly to your signed-in browser sessions of <strong>ChatGPT</strong>, <strong>Claude</strong>, or <strong>Gemini Web</strong>.
+          This completely bypasses API quota limits and requires zero paid API credits.
         </p>
+
+        {/* Web AI Provider Toggler */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: '#ffffff', border: '2px solid #1a1a1a', padding: '10px 12px', boxShadow: '3px 3px 0px #1a1a1a' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: '#1a1a1a', fontFamily: 'var(--font-headline)', textTransform: 'uppercase' }}>
+              Active Web AI Window Toggler
+            </span>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: '#0055ff' }}>
+              Active: {settings?.webAiProvider === 'claude' ? 'Claude Web' : settings?.webAiProvider === 'gemini' ? 'Gemini Web' : 'ChatGPT Web'}
+            </span>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '6px',
+              marginTop: '4px',
+            }}
+          >
+            {[
+              { id: 'chatgpt', label: 'ChatGPT Web', icon: <Bot size={13} /> },
+              { id: 'claude', label: 'Claude Web', icon: <Cpu size={13} /> },
+              { id: 'gemini', label: 'Gemini Web', icon: <Sparkles size={13} /> },
+            ].map((p) => {
+              const isSelected = (settings?.webAiProvider || 'chatgpt') === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleSelectWebAiProvider(p.id as WebAiProviderType)}
+                  style={{
+                    padding: '8px 6px',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    fontFamily: 'var(--font-headline)',
+                    border: '1.5px solid #1a1a1a',
+                    cursor: 'pointer',
+                    background: isSelected ? '#ffcc00' : '#f5f0e8',
+                    color: '#1a1a1a',
+                    boxShadow: isSelected ? '2px 2px 0px #1a1a1a' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>{p.icon}</span>
+                  <span>{p.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: '10px', color: '#666666', marginTop: '2px', lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Info size={11} style={{ flexShrink: 0 }} />
+            <span>Prevents conflicts when multiple AI tabs are open: only the active selected AI window executes auto-pilot and sync.</span>
+          </div>
+        </div>
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', paddingTop: '4px' }}>
           <button
@@ -319,11 +414,21 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onRefreshData }) => {
           <button
             type="button"
             className="btn btn-secondary"
-            onClick={() => window.open('https://claude.ai/', '_blank')}
+            onClick={() => window.open('https://claude.ai/new', '_blank')}
             style={{ fontSize: '11px', padding: '6px 12px', fontWeight: 700 }}
           >
             <ExternalLink size={12} />
             <span>Open Claude Web ↗</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => window.open('https://gemini.google.com/app', '_blank')}
+            style={{ fontSize: '11px', padding: '6px 12px', fontWeight: 700 }}
+          >
+            <ExternalLink size={12} />
+            <span>Open Gemini Web ↗</span>
           </button>
         </div>
 
@@ -636,8 +741,20 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onRefreshData }) => {
               </div>
             )}
 
-            {/* Action Button */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '4px' }}>
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', paddingTop: '4px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleTakeAnswersFromGitHubBank}
+                disabled={isImportingFromGitHub || isSyncingKb}
+                style={{ fontSize: '11px', padding: '6px 12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', background: '#ffcc00', color: '#1a1a1a' }}
+                title="Loads verified answers from the GitHub repository directly into your local course answer bank"
+              >
+                <Database size={12} className={isImportingFromGitHub ? 'animate-spin' : ''} />
+                <span>{isImportingFromGitHub ? 'Loading Bank...' : 'Take Answers from GitHub Bank'}</span>
+              </button>
+
               <button
                 type="button"
                 className="btn btn-secondary"

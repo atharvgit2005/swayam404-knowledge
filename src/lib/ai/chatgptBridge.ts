@@ -178,7 +178,37 @@ ${questionBlocks}`;
   }
 
   /**
-   * Opens Web AI (ChatGPT or Claude) in a new browser tab without automating its internal DOM
+   * Returns default target URL for selected Web AI provider
+   */
+  static getProviderUrl(provider: 'chatgpt' | 'claude' | 'gemini' = 'chatgpt'): string {
+    switch (provider) {
+      case 'claude':
+        return 'https://claude.ai/new';
+      case 'gemini':
+        return 'https://gemini.google.com/app';
+      case 'chatgpt':
+      default:
+        return 'https://chatgpt.com/';
+    }
+  }
+
+  /**
+   * Returns human-readable label for selected Web AI provider
+   */
+  static getProviderLabel(provider: 'chatgpt' | 'claude' | 'gemini' = 'chatgpt'): string {
+    switch (provider) {
+      case 'claude':
+        return 'Claude Web';
+      case 'gemini':
+        return 'Gemini Web';
+      case 'chatgpt':
+      default:
+        return 'ChatGPT Web';
+    }
+  }
+
+  /**
+   * Opens Web AI (ChatGPT, Claude, or Gemini) in a new browser tab without automating its internal DOM
    */
   static async openChatGptTab(url: string = 'https://chatgpt.com/'): Promise<void> {
     if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
@@ -186,6 +216,16 @@ ${questionBlocks}`;
     } else if (typeof window !== 'undefined') {
       window.open(url, '_blank');
     }
+  }
+
+  /**
+   * Opens active Web AI provider tab
+   */
+  static async openWebAiTab(providerOrUrl: 'chatgpt' | 'claude' | 'gemini' | string = 'chatgpt'): Promise<void> {
+    const url = providerOrUrl.startsWith('http')
+      ? providerOrUrl
+      : this.getProviderUrl(providerOrUrl as 'chatgpt' | 'claude' | 'gemini');
+    await this.openChatGptTab(url);
   }
 
   /**

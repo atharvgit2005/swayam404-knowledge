@@ -250,4 +250,140 @@ describe('Site Adapter & Local Assignment Fixtures Integration', () => {
     expect(formSubmitCount).toBe(0);
     expect(buttonClickCount).toBe(0);
   });
+
+  it('accurately extracts full question stem and options from modern SWAYAM 2 / Open edX problem structures', () => {
+    document.body.innerHTML = `
+      <div class="problem" id="problem_ent_01">
+        <h3 class="problem-header">Question 1</h3>
+        <div class="problem-description">
+          <p>What is the primary objective of building a Minimum Viable Product (MVP)?</p>
+        </div>
+        <div class="choicegroup capa_inputtype">
+          <fieldset aria-label="Question 1 choices">
+            <div class="field">
+              <input type="radio" name="input_ent_01" id="input_ent_01_choice_0" value="choice_0" />
+              <label for="input_ent_01_choice_0">To test hypotheses with minimal resources</label>
+            </div>
+            <div class="field">
+              <input type="radio" name="input_ent_01" id="input_ent_01_choice_1" value="choice_1" />
+              <label for="input_ent_01_choice_1">To maximize initial revenue</label>
+            </div>
+          </fieldset>
+        </div>
+      </div>
+    `;
+
+    const scanned = adapter.scanQuestions(document);
+    expect(scanned.length).toBe(1);
+    const q1 = scanned[0];
+    expect(q1.questionText).toContain('Minimum Viable Product');
+    expect(q1.questionText).toContain('Question 1: What is the primary objective of building a Minimum Viable Product (MVP)?');
+    expect(q1.questionText).not.toBe('Question 1');
+    expect(q1.options.length).toBe(2);
+    expect(q1.options[0].text).toBe('To test hypotheses with minimal resources');
+    expect(q1.options[1].text).toBe('To maximize initial revenue');
+  });
+
+  it('accurately extracts question stem when question text precedes a bare fieldset', () => {
+    document.body.innerHTML = `
+      <div class="question-wrapper">
+        <h4 class="question-header">Question 2</h4>
+        <p class="question-stem">Which term describes the rate at which cash is consumed before positive cashflow?</p>
+        <fieldset>
+          <label><input type="radio" name="q2_cash" id="q2_opt1" value="churn" /> Churn rate</label>
+          <label><input type="radio" name="q2_cash" id="q2_opt2" value="burn" /> Burn rate</label>
+        </fieldset>
+      </div>
+    `;
+
+    const scanned = adapter.scanQuestions(document);
+    expect(scanned.length).toBe(1);
+    const q2 = scanned[0];
+    expect(q2.questionText).toContain('Question 2: Which term describes the rate at which cash is consumed before positive cashflow?');
+    expect(q2.options.length).toBe(2);
+    expect(q2.options[1].text).toBe('Burn rate');
+  });
+
+  it('scans modern SWAYAM 2 / edX course outline with chapters, sections, and unit links', () => {
+    document.body.innerHTML = `
+      <div id="course-outline" class="course-outline">
+        <div class="chapter">
+          <h3 class="chapter-title">Week 1: Foundations of Entrepreneurship</h3>
+          <div class="section">
+            <a href="/courses/course-v1:edX+ENT101+2026/jump_to_id/lec1" class="unit-link">Lecture 1: Ideation</a>
+          </div>
+          <div class="section">
+            <a href="/courses/course-v1:edX+ENT101+2026/jump_to_id/a1" class="unit-link submitted" data-completed="true">
+              Week 1 Assignment: Idea Validation
+              <span class="badge badge-success">Score: 100%</span>
+            </a>
+          </div>
+          <div class="section">
+            <a href="/courses/course-v1:edX+ENT101+2026/jump_to_id/q1" class="unit-link">Week 1 Quiz: Startup Fundamentals</a>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const outline = adapter.scanCourseOutline(document);
+    expect(outline.tasks.length).toBe(3);
+    const a1 = outline.tasks.find((t) => t.title.includes('Week 1 Assignment'));
+    expect(a1).toBeDefined();
+    expect(a1?.type).toBe('assignment');
+    expect(a1?.status).toBe('completed');
+    expect(a1?.portalReportedComplete).toBe(true);
+
+    const q1 = outline.tasks.find((t) => t.title.includes('Week 1 Quiz'));
+    expect(q1).toBeDefined();
+    expect(q1?.type).toBe('quiz');
+    expect(q1?.status).toBe('ready-to-prepare');
+  });
+
+  it('scans real modern SWAYAM 2 Next.js assessment question cards accurately ignoring 1 Point badges', () => {
+    document.body.innerHTML = `
+      <section class="bg-white dark:bg-[#252525] border border-gray-200 dark:border-gray-700 w-full max-w-full overflow-hidden rounded-md mt-3">
+        <div class="p-3 sm:p-5 w-full">
+          <div class="flex items-start justify-between gap-2 sm:gap-4 w-full">
+            <div class="min-w-0 flex-1 max-w-full overflow-hidden">
+              <div class="flex gap-2 question-row">
+                <span class="shrink-0 ">1.</span>
+                <div class="min-w-0 w-full max-w-full overflow-hidden wrap-break-word overflow-wrap-anywhere question-content">
+                  ________ involves operating as frugally as possible:
+                </div>
+              </div>
+            </div>
+            <div class="question-text ml-2 sm:ml-4 shrink-0 whitespace-nowrap">1 Point</div>
+          </div>
+          <div class="space-y-3 mt-4 w-full max-w-full">
+            <label class="relative flex cursor-pointer items-center gap-1">
+              <input type="radio" name="4eV2OPnPEvMl_6286651116486656" id="opt-1-0" value="on" />
+              <span>Management</span>
+            </label>
+            <label class="relative flex cursor-pointer items-center gap-1">
+              <input type="radio" name="4eV2OPnPEvMl_6286651116486656" id="opt-1-1" value="on" />
+              <span>Bootstrapping</span>
+            </label>
+            <label class="relative flex cursor-pointer items-center gap-1">
+              <input type="radio" name="4eV2OPnPEvMl_6286651116486656" id="opt-1-2" value="on" />
+              <span>Screening</span>
+            </label>
+            <label class="relative flex cursor-pointer items-center gap-1">
+              <input type="radio" name="4eV2OPnPEvMl_6286651116486656" id="opt-1-3" value="on" />
+              <span>Financing</span>
+            </label>
+          </div>
+        </div>
+      </section>
+    `;
+
+    const scanned = adapter.scanQuestions(document);
+    expect(scanned.length).toBe(1);
+    const q1 = scanned[0];
+    expect(q1.id).toBe('q-1');
+    expect(q1.questionText).toBe('1. ________ involves operating as frugally as possible:');
+    expect(q1.questionText).not.toContain('1 Point');
+    expect(q1.options.length).toBe(4);
+    expect(q1.options[1].text).toBe('Bootstrapping');
+  });
 });
+

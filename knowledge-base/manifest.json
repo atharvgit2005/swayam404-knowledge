@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0.0",
+  "datasetVersion": "1.0.0",
+  "name": "swayam404-knowledge",
+  "description": "Shared open learning knowledge base and synthetic benchmark packs for Swayam404.",
+  "publishedAt": "2026-01-15T00:00:00Z",
+  "minExtensionVersion": "1.0.0",
+  "courses": [
+    {
+      "courseId": "course-econ-101",
+      "courseTitle": "Principles of Economics (Synthetic Test Pack)",
+      "provider": "SWAYAM",
+      "institution": "National Portal Synthetic Benchmark",
+      "language": "en",
+      "coursePackVersion": "1.0.0",
+      "lastUpdated": "2026-01-15T00:00:00Z",
+      "metadataPath": "courses/course-econ-101/course.json",
+      "resourcesPath": "courses/course-econ-101/resources.json",
+      "reviewRecordsPath": "courses/course-econ-101/review-records.json",
+      "contentHash": "48ff393d2b67e2aac0916ecbb54065acb77e91b91a5287c711ff97a7fdfd355a",
+      "resourceCount": 2,
+      "reviewRecordCount": 1
+    },
+    {
+      "courseId": "course-ent-201",
+      "courseTitle": "Entrepreneurship & Venture Initiation (Synthetic Test Pack)",
+      "provider": "SWAYAM",
+      "institution": "National Portal Synthetic Benchmark",
+      "language": "en",
+      "coursePackVersion": "1.0.0",
+      "lastUpdated": "2026-01-15T00:00:00Z",
+      "metadataPath": "courses/course-ent-201/course.json",
+      "resourcesPath": "courses/course-ent-201/resources.json",
+      "reviewRecordsPath": "courses/course-ent-201/review-records.json",
+      "contentHash": "b7464e659d5c8e7fa1bb31892ad0fc93f60b613de8fff1a67294b405b0c28039",
+      "resourceCount": 1,
+      "reviewRecordCount": 1
+    }
+  ]
+}

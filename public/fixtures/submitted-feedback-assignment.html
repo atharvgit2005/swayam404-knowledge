@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SWAYAM Portal — Submitted Assignment with Evaluated Feedback</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+      margin: 0;
+      padding: 24px;
+    }
+    .portal-container {
+      max-width: 860px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      padding: 28px;
+    }
+    .gcb-form-element {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+      background: #f8fafc;
+    }
+    .qt-question-text {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 12px;
+    }
+    .choice-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .choice-label.correct {
+      border-color: #10b981;
+      background: #ecfdf5;
+    }
+    .badge-correct {
+      background: #10b981;
+      color: #ffffff;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: auto;
+    }
+    .accepted-answers {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #065f46;
+    }
+    .explanation {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #475569;
+    }
+    .score-badge {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+    .btn-submit {
+      background: #ef4444;
+      color: #fff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="portal-container">
+    <div class="header" data-course-title="Principles of Economics" data-course-id="ini26_cm22">
+      <h1>Principles of Economics — Assignment 1 Feedback</h1>
+      <p class="unit-title">Week 1: Fundamentals of Economics</p>
+    </div>
+
+    <form id="evaluated-form">
+      <!-- Q1: Single choice radio with option-level .correct indicator -->
+      <div class="gcb-form-element" data-question-id="fb_q1">
+        <div class="score-badge">Score: 1 / 1</div>
+        <div class="qt-question-text">1. What is the fundamental economic problem that all societies face?</div>
+        <div class="choices">
+          <label class="choice-label">
+            <input type="radio" name="fb_q1_grp" id="fb_q1_a" value="inflation">
+            <span>Inflation</span>
+          </label>
+          <label class="choice-label correct">
+            <input type="radio" name="fb_q1_grp" id="fb_q1_b" value="scarcity" checked>
+            <span>Scarcity</span>
+            <span class="badge-correct">✔ Accepted Answer</span>
+          </label>
+          <label class="choice-label">
+            <input type="radio" name="fb_q1_grp" id="fb_q1_c" value="recession">
+            <span>Recession</span>
+          </label>
+        </div>
+        <div class="explanation">
+          Explanation: Scarcity arises because human wants are unlimited while productive resources are finite.
+        </div>
+      </div>
+
+      <!-- Q2: Single choice radio with separate .accepted-answers block below question -->
+      <div class="gcb-form-element" data-question-id="fb_q2">
+        <div class="score-badge">Score: 1 / 1</div>
+        <div class="qt-question-text">2. Which term describes the rate at which a venture consumes its cash?</div>
+        <div class="choices">
+          <label class="choice-label">
+            <input type="radio" name="fb_q2_grp" id="fb_q2_a" value="churn">
+            <span>Churn rate</span>
+          </label>
+          <label class="choice-label">
+            <input type="radio" name="fb_q2_grp" id="fb_q2_b" value="burn" checked>
+            <span>Burn rate</span>
+          </label>
+        </div>
+        <div class="accepted-answers">
+          Accepted Answers: Burn rate
+        </div>
+        <div class="explanation">
+          Explanation: Burn rate tracks monthly net negative cash flow.
+        </div>
+      </div>
+
+      <!-- Q3: Multiple-choice checkboxes with full accepted answers list -->
+      <div class="gcb-form-element" data-question-id="fb_q3">
+        <div class="score-badge">Score: 1 / 1</div>
+        <div class="qt-question-text">3. Which factors shift the demand curve to the right?</div>
+        <div class="choices">
+          <label class="choice-label correct">
+            <input type="checkbox" name="fb_q3_grp" id="fb_q3_inc" value="income" checked>
+            <span>Increase in consumer income for normal goods</span>
+            <span class="badge-correct">✔</span>
+          </label>
+          <label class="choice-label correct">
+            <input type="checkbox" name="fb_q3_grp" id="fb_q3_pref" value="pref" checked>
+            <span>Favorable change in consumer tastes</span>
+            <span class="badge-correct">✔</span>
+          </label>
+          <label class="choice-label">
+            <input type="checkbox" name="fb_q3_grp" id="fb_q3_cost" value="cost">
+            <span>Increase in production costs</span>
+          </label>
+        </div>
+        <div class="accepted-answers">
+          Accepted Answers:
+          Increase in consumer income for normal goods
+          Favorable change in consumer tastes
+        </div>
+      </div>
+
+      <!-- Q4: Student answered WRONGLY (selected True), Portal feedback explicitly says "Accepted Answers: False" -->
+      <!-- Proves that extension captures portal feedback and NOT student's erroneous selection -->
+      <div class="gcb-form-element" data-question-id="fb_q4">
+        <div class="score-badge">Score: 0 / 1</div>
+        <div class="qt-question-text">4. A price ceiling placed above equilibrium price causes a market shortage.</div>
+        <div class="choices">
+          <label class="choice-label">
+            <input type="radio" name="fb_q4_grp" id="fb_q4_t" value="true" checked>
+            <span>True</span>
+          </label>
+          <label class="choice-label">
+            <input type="radio" name="fb_q4_grp" id="fb_q4_f" value="false">
+            <span>False</span>
+          </label>
+        </div>
+        <div class="accepted-answers">
+          Accepted Answers: False
+        </div>
+        <div class="explanation">
+          Explanation: A price ceiling above equilibrium is non-binding and has no effect on market equilibrium.
+        </div>
+      </div>
+
+      <!-- Q5: Score-only question with NO accepted answer feedback -->
+      <!-- Proves that extension refuses to infer answer purely from score -->
+      <div class="gcb-form-element" data-question-id="fb_q5">
+        <div class="score-badge">Score: 1 / 1</div>
+        <div class="qt-question-text">5. What does GDP stand for?</div>
+        <div class="choices">
+          <label class="choice-label">
+            <input type="radio" name="fb_q5_grp" id="fb_q5_a" value="a" checked>
+            <span>Gross Domestic Product</span>
+          </label>
+          <label class="choice-label">
+            <input type="radio" name="fb_q5_grp" id="fb_q5_b" value="b">
+            <span>General Domestic Price</span>
+          </label>
+        </div>
+        <!-- Notice: No .accepted-answers, no .correct badges, no explanation -->
+      </div>
+
+      <!-- Q6: Short text question with accepted answer in feedback -->
+      <div class="gcb-form-element" data-question-id="fb_q6">
+        <div class="score-badge">Score: 1 / 1</div>
+        <div class="qt-question-text">6. What term describes the value of the next best alternative forgone?</div>
+        <input type="text" id="fb_q6_text" value="Opportunity cost" readonly>
+        <div class="accepted-answers">
+          Accepted Answers: Opportunity cost
+        </div>
+        <div class="explanation">
+          Explanation: Opportunity cost is the fundamental tradeoff measured when allocating scarce resources.
+        </div>
+      </div>
+
+      <!-- Submit button for testing submit immunity -->
+      <div class="actions">
+        <button type="button" class="btn-submit" id="fb-submit-btn" onclick="alert('SUBMIT_TRIGGERED')">
+          Submit
+        </button>
+      </div>
+    </form>
+  </div>
+</body>
+</html>

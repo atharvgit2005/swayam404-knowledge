@@ -46,6 +46,9 @@ export function normalizeQuestionText(raw: string): string {
   // Lowercase
   text = text.toLowerCase();
 
+  // Normalize fill-in-the-blank underscores and dashes e.g. "________" -> "_"
+  text = text.replace(/_{2,}/g, '_').replace(/-{2,}/g, '-');
+
   // Collapse all whitespace (tabs, newlines, multi-spaces)
   text = text.replace(/\s+/g, ' ');
 
@@ -71,6 +74,8 @@ export function normalizeOptionText(raw: string): string {
   text = text
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201C\u201D]/g, '"')
+    .replace(/_{2,}/g, '_')
+    .replace(/-{2,}/g, '-')
     .replace(/\s+/g, ' ')
     .toLowerCase();
 
@@ -176,4 +181,16 @@ export function calculateTextSimilarity(a: string, b: string): number {
 
   // Return weighted conservative score
   return 0.6 * jaccard + 0.4 * dice;
+}
+
+/**
+ * Splits text into lowercased alphanumeric tokens
+ */
+export function tokenize(text: string): string[] {
+  if (!text) return [];
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 0);
 }

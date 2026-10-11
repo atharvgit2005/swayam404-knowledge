@@ -7,11 +7,22 @@
     "activeTab",
     "scripting",
     "storage",
-    "sidePanel"
+    "sidePanel",
+    "clipboardRead",
+    "clipboardWrite",
+    "tabs"
   ],
   "host_permissions": [
+    "https://*.swayam2.ac.in/*",
+    "https://swayam2.ac.in/*",
     "https://*.swayam.gov.in/*",
     "https://swayam.gov.in/*",
+    "https://*.nptel.ac.in/*",
+    "https://nptel.ac.in/*",
+    "https://*.chatgpt.com/*",
+    "https://chatgpt.com/*",
+    "https://*.claude.ai/*",
+    "https://claude.ai/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
   ],
@@ -34,12 +45,26 @@
   "content_scripts": [
     {
       "matches": [
+        "https://*.swayam2.ac.in/*",
+        "https://swayam2.ac.in/*",
         "https://*.swayam.gov.in/*",
         "https://swayam.gov.in/*",
+        "https://*.nptel.ac.in/*",
+        "https://nptel.ac.in/*",
         "http://localhost/*",
         "http://127.0.0.1/*"
       ],
       "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://*.chatgpt.com/*",
+        "https://chatgpt.com/*",
+        "https://*.claude.ai/*",
+        "https://claude.ai/*"
+      ],
+      "js": ["chatgptContent.js"],
       "run_at": "document_idle"
     }
   ],

@@ -1,0 +1,102 @@
+name: Validate Knowledge Base Packs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate Manifest & Course Packs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate JSON Schemas and Integrity Hashes
+        run: |
+          node -e '
+            const fs = require("fs");
+            const path = require("path");
+            const crypto = require("crypto");
+
+            console.log("==> Validating manifest.json...");
+            if (!fs.existsSync("manifest.json")) {
+              console.error("FAIL: manifest.json missing!");
+              process.exit(1);
+            }
+
+            const manifest = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
+            if (manifest.schemaVersion !== "1.0.0") {
+              console.error("FAIL: Unsupported schemaVersion: " + manifest.schemaVersion);
+              process.exit(1);
+            }
+
+            function canonicalJsonStringify(val) {
+              if (val === null || typeof val !== "object") return JSON.stringify(val);
+              if (Array.isArray(val)) return "[" + val.map(canonicalJsonStringify).join(",") + "]";
+              const keys = Object.keys(val).sort();
+              return "{" + keys.map(k => JSON.stringify(k) + ":" + canonicalJsonStringify(val[k])).join(",") + "}";
+            }
+
+            const seenIds = new Set();
+            for (const courseEntry of manifest.courses) {
+              console.log("--> Checking course: " + courseEntry.courseId);
+              if (seenIds.has(courseEntry.courseId)) {
+                console.error("FAIL: Duplicate courseId: " + courseEntry.courseId);
+                process.exit(1);
+              }
+              seenIds.add(courseEntry.courseId);
+
+              // Verify files exist
+              if (!fs.existsSync(courseEntry.metadataPath)) {
+                console.error("FAIL: metadataPath does not exist: " + courseEntry.metadataPath);
+                process.exit(1);
+              }
+              if (!fs.existsSync(courseEntry.resourcesPath)) {
+                console.error("FAIL: resourcesPath does not exist: " + courseEntry.resourcesPath);
+                process.exit(1);
+              }
+              if (courseEntry.reviewRecordsPath && !fs.existsSync(courseEntry.reviewRecordsPath)) {
+                console.error("FAIL: reviewRecordsPath does not exist: " + courseEntry.reviewRecordsPath);
+                process.exit(1);
+              }
+
+              const course = JSON.parse(fs.readFileSync(courseEntry.metadataPath, "utf8"));
+              const resources = JSON.parse(fs.readFileSync(courseEntry.resourcesPath, "utf8"));
+              const reviewRecords = courseEntry.reviewRecordsPath ? JSON.parse(fs.readFileSync(courseEntry.reviewRecordsPath, "utf8")) : [];
+
+              // Verify review records are released
+              for (const rr of reviewRecords) {
+                if (rr.isReleased !== true) {
+                  console.error("FAIL: Unreleased review record found in " + courseEntry.courseId);
+                  process.exit(1);
+                }
+              }
+
+              // Verify SHA-256 hash
+              const payload = {
+                courseId: courseEntry.courseId,
+                coursePackVersion: courseEntry.coursePackVersion,
+                course,
+                resources,
+                reviewRecords
+              };
+              const canonical = canonicalJsonStringify(payload);
+              const computedHash = crypto.createHash("sha256").update(canonical).digest("hex");
+
+              if (computedHash.toLowerCase() !== courseEntry.contentHash.toLowerCase()) {
+                console.error("FAIL: Integrity hash mismatch for " + courseEntry.courseId);
+                console.error("Expected: " + courseEntry.contentHash);
+                console.error("Computed: " + computedHash);
+                process.exit(1);
+              }
+            }
+            console.log("==> All knowledge packs passed validation!");
+          '

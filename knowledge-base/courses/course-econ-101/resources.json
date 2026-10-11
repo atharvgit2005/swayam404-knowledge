@@ -1,0 +1,43 @@
+[
+  {
+    "resourceId": "econ-res-001",
+    "courseId": "course-econ-101",
+    "title": "Concept Summary: Price Elasticity of Demand",
+    "resourceType": "concept-summary",
+    "content": "Price elasticity of demand (PED) measures the responsiveness of quantity demanded to changes in price. When PED is greater than 1, demand is elastic; when PED is less than 1, demand is inelastic. Unit elastic demand occurs when percentage change in price equals percentage change in quantity demanded.",
+    "topics": ["price-elasticity", "demand-curves"],
+    "provenance": {
+      "sourceTitle": "Synthetic Open Economics Notes — Unit 1",
+      "sourceUrl": "https://example.org/synthetic/economics/unit1",
+      "authorOrPublisher": "Synthetic Open Education Project",
+      "license": "CC-BY-4.0",
+      "attribution": "Synthetic study materials created for benchmark testing.",
+      "retrievalDate": "2026-01-15T00:00:00Z",
+      "lectureNumber": "Lecture 3",
+      "lectureTimestamp": "12:45"
+    },
+    "version": "1.0.0",
+    "createdAt": "2026-01-15T00:00:00Z",
+    "updatedAt": "2026-01-15T00:00:00Z"
+  },
+  {
+    "resourceId": "econ-res-002",
+    "courseId": "course-econ-101",
+    "title": "Worked Example: Market Equilibrium Computation",
+    "resourceType": "worked-example",
+    "content": "Given Qd = 100 - 2P and Qs = 20 + 2P, setting Qd = Qs yields 100 - 2P = 20 + 2P => 4P = 80 => P* = 20. Substituting into Qd yields Q* = 60 units.",
+    "topics": ["market-equilibrium", "algebraic-models"],
+    "provenance": {
+      "sourceTitle": "Synthetic Open Economics Notes — Unit 2",
+      "sourceUrl": "https://example.org/synthetic/economics/unit2",
+      "authorOrPublisher": "Synthetic Open Education Project",
+      "license": "CC-BY-4.0",
+      "attribution": "Synthetic study materials created for benchmark testing.",
+      "retrievalDate": "2026-01-15T00:00:00Z",
+      "lectureNumber": "Lecture 4"
+    },
+    "version": "1.0.0",
+    "createdAt": "2026-01-15T00:00:00Z",
+    "updatedAt": "2026-01-15T00:00:00Z"
+  }
+]

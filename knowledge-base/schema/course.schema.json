@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/swayam404/swayam404-knowledge/main/schema/course.schema.json",
+  "title": "Swayam404 Course Metadata",
+  "description": "Metadata definition for an individual course pack.",
+  "type": "object",
+  "required": [
+    "courseId",
+    "courseTitle",
+    "language",
+    "description",
+    "coursePackVersion",
+    "publishedAt",
+    "updatedAt",
+    "topics"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "courseId": {
+      "type": "string",
+      "pattern": "^[a-z0-9_-]+$",
+      "description": "Stable unique course identifier."
+    },
+    "courseTitle": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Full display title of the course."
+    },
+    "externalCourseId": {
+      "type": "string",
+      "description": "Portal course identifier or course code (e.g. SWAYAM-ECON-CORE or noc25-cs12)."
+    },
+    "provider": {
+      "type": "string",
+      "description": "Hosting provider or platform (e.g. SWAYAM / NPTEL)."
+    },
+    "institution": {
+      "type": "string",
+      "description": "Offering academic institution."
+    },
+    "language": {
+      "type": "string",
+      "default": "en",
+      "description": "Course language."
+    },
+    "description": {
+      "type": "string",
+      "description": "Syllabus or course overview."
+    },
+    "coursePackVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of this course pack."
+    },
+    "publishedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 publication timestamp."
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 last update timestamp."
+    },
+    "topics": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Key concepts and topics covered in the course."
+    },
+    "learningObjectives": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Core competencies or expected learning outcomes."
+    }
+  }
+}

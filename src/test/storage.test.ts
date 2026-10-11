@@ -202,4 +202,104 @@ describe('Storage & Import/Export Engine', () => {
     expect(entQuestions.length).toBe(1);
     expect(entQuestions[0].id).toBe('ent-new');
   });
+
+  it('persists and clears active scan session across simulated tab switches', async () => {
+    expect(await StorageService.getActiveScanSession()).toBeNull();
+
+    const mockSession = {
+      url: 'https://onlinecourses.swayam2.ac.in/ini26_cm22/unit?unit=26&assessment=118',
+      pageTitle: 'Week 05: Assignment 05',
+      courseId: 'course-ent-201',
+      courseTitle: 'Entrepreneurship',
+      assignmentTitle: 'Week 05: Assignment 05',
+      results: [
+        {
+          scannedQuestion: {
+            id: 'q-1',
+            index: 1,
+            questionText: '1. _______ involves operating as frugally as possible:',
+            questionType: 'single-choice' as const,
+            formType: 'radio' as const,
+            options: [{ id: 'opt-1', text: 'Bootstrapping', value: '1' }],
+          },
+          status: 'exact-match' as const,
+          confidence: 1.0,
+          reasons: ['Exact match'],
+          proposedAnswers: ['Bootstrapping'],
+          isApproved: true,
+          requiresReview: false,
+        },
+      ],
+      savedAt: new Date().toISOString(),
+    };
+
+    await StorageService.saveActiveScanSession(mockSession);
+    const retrieved = await StorageService.getActiveScanSession();
+    expect(retrieved).not.toBeNull();
+    expect(retrieved?.assignmentTitle).toBe('Week 05: Assignment 05');
+    expect(retrieved?.results.length).toBe(1);
+    expect(retrieved?.results[0].proposedAnswers[0]).toBe('Bootstrapping');
+
+    await StorageService.clearActiveScanSession();
+    expect(await StorageService.getActiveScanSession()).toBeNull();
+  });
+
+  it('saves, retrieves, deduplicates, and deletes assignment scan history items', async () => {
+    expect(await StorageService.getScanHistory()).toEqual([]);
+
+    await StorageService.saveScanHistory({
+      id: 'scan-1',
+      url: 'https://swayam2.ac.in/assign-1',
+      pageTitle: 'Assignment 01',
+      courseId: 'c-1',
+      courseTitle: 'Course 1',
+      assignmentTitle: 'Assignment 01',
+      totalQuestions: 10,
+      approvedCount: 8,
+      results: [],
+      timestamp: '2026-10-10T10:00:00Z',
+    });
+
+    await StorageService.saveScanHistory({
+      id: 'scan-2',
+      url: 'https://swayam2.ac.in/assign-2',
+      pageTitle: 'Assignment 02',
+      courseId: 'c-1',
+      courseTitle: 'Course 1',
+      assignmentTitle: 'Assignment 02',
+      totalQuestions: 15,
+      approvedCount: 15,
+      results: [],
+      timestamp: '2026-10-11T12:00:00Z',
+    });
+
+    let history = await StorageService.getScanHistory();
+    expect(history.length).toBe(2);
+    expect(history[0].assignmentTitle).toBe('Assignment 02'); // Most recent first
+
+    // Saving update for same URL updates entry and does not duplicate
+    await StorageService.saveScanHistory({
+      id: 'scan-2-updated',
+      url: 'https://swayam2.ac.in/assign-2',
+      pageTitle: 'Assignment 02 Updated',
+      courseId: 'c-1',
+      courseTitle: 'Course 1',
+      assignmentTitle: 'Assignment 02',
+      totalQuestions: 15,
+      approvedCount: 15,
+      results: [],
+      timestamp: '2026-10-11T13:00:00Z',
+    });
+
+    history = await StorageService.getScanHistory();
+    expect(history.length).toBe(2);
+
+    await StorageService.deleteScanHistoryItem('scan-1');
+    history = await StorageService.getScanHistory();
+    expect(history.length).toBe(1);
+    expect(history[0].assignmentTitle).toBe('Assignment 02');
+
+    await StorageService.clearScanHistory();
+    expect(await StorageService.getScanHistory()).toEqual([]);
+  });
 });

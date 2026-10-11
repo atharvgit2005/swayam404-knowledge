@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Course } from '@/types';
+import { Course, CourseMaterial } from '@/types';
 import { StorageService } from '@/lib/storage';
 import { ImportExportService, ImportValidationResult } from '@/lib/storage/importExport';
 import {
@@ -9,7 +9,12 @@ import {
   CheckCircle2,
   Sparkles,
   FileJson,
+  Share2,
+  BookOpen,
 } from 'lucide-react';
+import { ContributionBuilder } from '@/lib/knowledge/contributionBuilder';
+import { ContributionProposal } from '@/types/knowledge';
+import { ContributionPreviewModal } from '@/features/knowledge/ContributionPreviewModal';
 
 interface ImportExportTabProps {
   courses: Course[];
@@ -30,6 +35,52 @@ export const ImportExportTab: React.FC<ImportExportTabProps> = ({
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null
   );
+  const [activeProposal, setActiveProposal] = useState<ContributionProposal | null>(null);
+
+  const handleProposeLearningResource = async () => {
+    setIsProcessing(true);
+    setStatusMessage(null);
+    try {
+      const course = courses.find((c) => c.id === selectedCourseId);
+      const materials = await StorageService.getCourseMaterials(selectedCourseId);
+      const now = new Date().toISOString();
+      const toUse: CourseMaterial[] =
+        materials.length > 0
+          ? materials
+          : [
+              {
+                id: `notes-${Date.now()}`,
+                courseId: selectedCourseId,
+                title: `${course?.name || 'Course'} - Core Lecture Notes`,
+                type: 'notes',
+                content:
+                  'Key concept definitions, formula summaries, and worked examples from course lectures.',
+                createdAt: now,
+                updatedAt: now,
+              },
+            ];
+
+      const prop = await ContributionBuilder.buildLearningResourceProposal({
+        courseId: selectedCourseId,
+        title: `${course?.name || 'Course'} Notes & Summaries`,
+        materials: toUse,
+        resourceType: 'concept-summary',
+        provenance: {
+          sourceTitle: `${course?.name || 'Course'} Learning Material`,
+          license: 'CC-BY-4.0',
+          permission: 'public-open-educational',
+          isPermissionConfirmed: true,
+        },
+        topics: [course?.name || 'General'],
+      });
+
+      setActiveProposal(prop);
+    } catch (err) {
+      setStatusMessage({ type: 'error', text: `Failed to prepare proposal: ${(err as Error).message}` });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // File selection and schema validation
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,44 +182,65 @@ export const ImportExportTab: React.FC<ImportExportTabProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {/* Header */}
-      <div>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>
-          Import & Export Answer Banks
-        </div>
-        <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-          Backup or restore versioned JSON answer banks with duplicate detection
+      <div
+        className="card"
+        style={{
+          padding: '16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}
+      >
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ width: '8px', height: '8px', background: '#1a1a1a', display: 'inline-block' }}></span>
+            <h2 style={{ fontFamily: 'var(--font-headline)', fontSize: '16px', fontWeight: 800, textTransform: 'uppercase', color: '#1a1a1a', letterSpacing: '-0.02em' }}>
+              Import & Export Answer Banks
+            </h2>
+          </div>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: '#4a4a4a', marginTop: '2px' }}>
+            Backup, migrate, or restore versioned JSON answer banks with collision detection
+          </p>
         </div>
       </div>
 
       {statusMessage && (
         <div
-          className="card"
           style={{
             fontSize: '11px',
-            background: statusMessage.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-            borderColor: statusMessage.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)',
-            color: statusMessage.type === 'success' ? '#6ee7b7' : '#fca5a5',
+            fontFamily: 'var(--font-body)',
+            padding: '10px 14px',
+            border: '2px solid #1a1a1a',
+            background: statusMessage.type === 'success' ? '#d6e3ff' : '#ffdad6',
+            color: '#1a1a1a',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
+            boxShadow: '4px 4px 0px #1a1a1a',
           }}
         >
-          {statusMessage.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-          <span>{statusMessage.text}</span>
+          {statusMessage.type === 'success' ? (
+            <CheckCircle2 size={15} style={{ flexShrink: 0, color: '#0055ff' }} />
+          ) : (
+            <AlertCircle size={15} style={{ flexShrink: 0, color: '#e63b2e' }} />
+          )}
+          <span style={{ fontWeight: 600 }}>{statusMessage.text}</span>
         </div>
       )}
 
       {/* Import Section */}
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Upload size={14} style={{ color: '#818cf8' }} />
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'var(--font-headline)', textTransform: 'uppercase', color: '#1a1a1a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Upload size={15} />
           Import Answer Bank (.json)
         </div>
 
         <div>
-          <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
+          <label style={{ fontSize: '11px', fontFamily: 'var(--font-headline)', fontWeight: 700, textTransform: 'uppercase', color: '#1a1a1a', display: 'block', marginBottom: '4px' }}>
             Target Course for Import:
           </label>
           <select value={targetCourse} onChange={(e) => setTargetCourse(e.target.value)}>
@@ -183,23 +255,23 @@ export const ImportExportTab: React.FC<ImportExportTabProps> = ({
         <div>
           <label
             style={{
-              border: '2px dashed var(--border-medium)',
-              borderRadius: '8px',
-              padding: '16px',
+              border: '2px dashed #1a1a1a',
+              padding: '20px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               gap: '6px',
               cursor: 'pointer',
-              background: 'rgba(0, 0, 0, 0.2)',
+              background: '#f2ede5',
+              transition: 'background 0.15s ease',
             }}
           >
-            <FileJson size={24} style={{ color: '#818cf8' }} />
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#f8fafc' }}>
-              {selectedFile ? selectedFile.name : 'Select or drop JSON file'}
+            <FileJson size={28} style={{ color: '#1a1a1a' }} />
+            <span style={{ fontSize: '12px', fontWeight: 800, fontFamily: 'var(--font-headline)', textTransform: 'uppercase', color: '#1a1a1a' }}>
+              {selectedFile ? selectedFile.name : 'Select or Drop JSON Key Bank'}
             </span>
-            <span style={{ fontSize: '10px', color: '#94a3b8' }}>
-              Supports version 1.0.0 answer bank files
+            <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#4a4a4a' }}>
+              Strictly validated against Swayam404 Schema v1.0.0
             </span>
             <input type="file" accept=".json" onChange={handleFileChange} style={{ display: 'none' }} />
           </label>
@@ -209,35 +281,35 @@ export const ImportExportTab: React.FC<ImportExportTabProps> = ({
         {validationResult && (
           <div
             style={{
-              padding: '10px',
-              borderRadius: '8px',
-              background: validationResult.isValid ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.05)',
-              border: validationResult.isValid ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)',
+              padding: '12px',
+              background: validationResult.isValid ? '#ffffff' : '#ffdad6',
+              border: '2px solid #1a1a1a',
+              boxShadow: '4px 4px 0px #1a1a1a',
               display: 'flex',
               flexDirection: 'column',
               gap: '8px',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 700 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 800, fontFamily: 'var(--font-headline)', textTransform: 'uppercase' }}>
               {validationResult.isValid ? (
-                <span style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <CheckCircle2 size={13} /> Schema Validated
+                <span style={{ color: '#1a1a1a', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <CheckCircle2 size={14} style={{ color: '#0055ff' }} /> Schema Validated Successfully
                 </span>
               ) : (
-                <span style={{ color: '#f87171', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <AlertCircle size={13} /> Schema Validation Failed
+                <span style={{ color: '#cc0000', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <AlertCircle size={14} /> Schema Validation Failed
                 </span>
               )}
             </div>
 
-            <div style={{ fontSize: '11px', color: '#cbd5e1' }}>
-              • Found <strong>{validationResult.questionCount}</strong> questions in file.<br />
-              • Duplicate questions in file: <strong>{validationResult.duplicateCountInFile}</strong>.<br />
-              • Collisions with existing course records: <strong>{validationResult.duplicateCountWithExisting}</strong>.
+            <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#1a1a1a', lineHeight: 1.5 }}>
+              • Total questions found: <strong>{validationResult.questionCount}</strong><br />
+              • Duplicates within file: <strong>{validationResult.duplicateCountInFile}</strong><br />
+              • Matches with existing course records: <strong>{validationResult.duplicateCountWithExisting}</strong>
             </div>
 
             {validationResult.warnings.length > 0 && (
-              <div style={{ fontSize: '10px', color: '#fbbf24' }}>
+              <div style={{ fontSize: '11px', color: '#1a1a1a', background: '#ffcc00', padding: '6px', border: '1px solid #1a1a1a', fontWeight: 600 }}>
                 {validationResult.warnings.map((w, i) => (
                   <div key={i}>⚠️ {w}</div>
                 ))}
@@ -245,7 +317,7 @@ export const ImportExportTab: React.FC<ImportExportTabProps> = ({
             )}
 
             {validationResult.errors.length > 0 && (
-              <div style={{ fontSize: '10px', color: '#fca5a5' }}>
+              <div style={{ fontSize: '11px', color: '#cc0000', fontWeight: 700 }}>
                 {validationResult.errors.map((e, i) => (
                   <div key={i}>❌ {e}</div>
                 ))}
@@ -253,25 +325,27 @@ export const ImportExportTab: React.FC<ImportExportTabProps> = ({
             )}
 
             {validationResult.isValid && (
-              <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', gap: '12px', fontSize: '11px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+              <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '16px', fontSize: '11px', fontFamily: 'var(--font-headline)', fontWeight: 700 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
                     <input
                       type="radio"
                       name="mode"
                       checked={importMode === 'merge'}
                       onChange={() => setImportMode('merge')}
+                      style={{ accentColor: '#1a1a1a' }}
                     />
                     <span>Merge & Update (Recommended)</span>
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
                     <input
                       type="radio"
                       name="mode"
                       checked={importMode === 'replace'}
                       onChange={() => setImportMode('replace')}
+                      style={{ accentColor: '#1a1a1a' }}
                     />
-                    <span>Replace Entire Course Bank</span>
+                    <span>Replace Entire Bank</span>
                   </label>
                 </div>
 
@@ -279,7 +353,7 @@ export const ImportExportTab: React.FC<ImportExportTabProps> = ({
                   className="btn btn-primary"
                   onClick={handleExecuteImport}
                   disabled={isProcessing}
-                  style={{ width: '100%', padding: '8px' }}
+                  style={{ width: '100%', padding: '10px', fontSize: '12px' }}
                 >
                   Confirm & Import Questions
                 </button>
@@ -290,24 +364,24 @@ export const ImportExportTab: React.FC<ImportExportTabProps> = ({
       </div>
 
       {/* Export Section */}
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Download size={14} style={{ color: '#38bdf8' }} />
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'var(--font-headline)', textTransform: 'uppercase', color: '#1a1a1a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Download size={15} />
           Export & Backup
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button
             className="btn btn-secondary"
             onClick={handleExportSelectedCourse}
-            style={{ flex: 1, fontSize: '11px' }}
+            style={{ flex: 1, minWidth: '180px', fontSize: '11px', padding: '8px 12px' }}
           >
             Export Active Course JSON
           </button>
           <button
             className="btn btn-secondary"
             onClick={handleExportAll}
-            style={{ flex: 1, fontSize: '11px' }}
+            style={{ flex: 1, minWidth: '180px', fontSize: '11px', padding: '8px 12px' }}
           >
             Full Backup (All Courses)
           </button>
@@ -315,21 +389,21 @@ export const ImportExportTab: React.FC<ImportExportTabProps> = ({
       </div>
 
       {/* Quick Load Official Sample Data */}
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Sparkles size={14} style={{ color: '#fbbf24' }} />
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'var(--font-headline)', textTransform: 'uppercase', color: '#1a1a1a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Sparkles size={15} />
           Quick Load Sample Answer Banks
         </div>
-        <p style={{ fontSize: '11px', color: '#94a3b8' }}>
-          Instantly seed fictional test questions for Economics or Entrepreneurship to test matching:
+        <p style={{ fontSize: '11px', fontFamily: 'var(--font-body)', color: '#4a4a4a' }}>
+          Instantly seed verified test keys for Economics or Entrepreneurship to verify local matching & auto-fill:
         </p>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button
             className="btn btn-secondary"
             onClick={() => handleQuickLoadSample('economics')}
             disabled={isProcessing}
-            style={{ flex: 1, fontSize: '11px' }}
+            style={{ flex: 1, minWidth: '180px', fontSize: '11px', padding: '8px 12px' }}
           >
             Load Economics Sample
           </button>
@@ -337,12 +411,44 @@ export const ImportExportTab: React.FC<ImportExportTabProps> = ({
             className="btn btn-secondary"
             onClick={() => handleQuickLoadSample('entrepreneurship')}
             disabled={isProcessing}
-            style={{ flex: 1, fontSize: '11px' }}
+            style={{ flex: 1, minWidth: '180px', fontSize: '11px', padding: '8px 12px' }}
           >
             Load Entrepreneurship Sample
           </button>
         </div>
       </div>
+
+      {/* Community Knowledge Contributions (Phase 3) */}
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'var(--font-headline)', textTransform: 'uppercase', color: '#1a1a1a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Share2 size={15} />
+          Community Knowledge Contributions
+        </div>
+        <p style={{ fontSize: '11px', fontFamily: 'var(--font-body)', color: '#4a4a4a', margin: 0 }}>
+          Contribute authorized course summaries, student lecture notes, or verified released assessment feedback to the shared open knowledge base repository. All contributions undergo strict schema validation, provenance checking, and zero-PII filtering.
+        </p>
+
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={handleProposeLearningResource}
+            disabled={isProcessing}
+            style={{ flex: 1, minWidth: '200px', fontSize: '11px', padding: '8px 12px', background: '#ffeb99' }}
+          >
+            <BookOpen size={13} />
+            Propose Course Notes / Summary
+          </button>
+        </div>
+      </div>
+
+      {activeProposal && (
+        <ContributionPreviewModal
+          isOpen={!!activeProposal}
+          onClose={() => setActiveProposal(null)}
+          initialProposal={activeProposal}
+          courseTitle={courses.find((c) => c.id === selectedCourseId)?.name}
+        />
+      )}
     </div>
   );
 };

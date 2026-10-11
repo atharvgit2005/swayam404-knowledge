@@ -1,0 +1,22 @@
+{
+  "courseId": "course-econ-101",
+  "courseTitle": "Principles of Economics (Synthetic Test Pack)",
+  "externalCourseId": "SWAYAM-ECON-CORE",
+  "provider": "SWAYAM",
+  "institution": "National Portal Synthetic Benchmark",
+  "language": "en",
+  "description": "Synthetic foundational study pack covering microeconomic concepts including supply and demand, elasticity, and consumer surplus.",
+  "coursePackVersion": "1.0.0",
+  "publishedAt": "2026-01-15T00:00:00Z",
+  "updatedAt": "2026-01-15T00:00:00Z",
+  "topics": [
+    "supply-and-demand",
+    "price-elasticity",
+    "market-equilibrium",
+    "consumer-surplus"
+  ],
+  "learningObjectives": [
+    "Understand market equilibrium price determination",
+    "Calculate price elasticity of demand coefficients"
+  ]
+}

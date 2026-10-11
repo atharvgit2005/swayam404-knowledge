@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SWAYAM Portal — Principles of Economics (noc24-hs101)</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+      margin: 0;
+      padding: 24px;
+    }
+    .portal-container {
+      max-width: 960px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e2e8f0;
+      overflow: hidden;
+    }
+    .header {
+      background: #1e3a8a;
+      color: #ffffff;
+      padding: 20px 28px;
+    }
+    .course-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 0 0 4px 0;
+    }
+    .course-code {
+      font-size: 13px;
+      opacity: 0.8;
+      margin: 0;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      min-height: 500px;
+    }
+    .sidebar {
+      border-right: 1px solid #e2e8f0;
+      background: #f8fafc;
+      padding: 20px;
+    }
+    .main-view {
+      padding: 24px;
+    }
+    .unit-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .unit-title {
+      font-weight: 600;
+      font-size: 15px;
+      padding: 10px 14px;
+      background: #f1f5f9;
+      border-bottom: 1px solid #e2e8f0;
+      margin: 0;
+    }
+    .task-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .task-row {
+      padding: 10px 14px;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+    }
+    .task-row:last-child {
+      border-bottom: none;
+    }
+    .task-row a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .task-row a:hover {
+      text-decoration: underline;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-success {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .badge-pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+  </style>
+</head>
+<body>
+  <div class="portal-container" data-course-id="noc24-hs101">
+    <div class="header">
+      <h1 class="course-title">Principles of Economics</h1>
+      <p class="course-code">Course Code: noc24-hs101 | National Programme on Technology Enhanced Learning (NPTEL)</p>
+    </div>
+
+    <div class="layout">
+      <!-- Course Outline Navigation Sidebar -->
+      <nav class="sidebar course-outline" id="course-outline">
+        <h2 style="font-size: 16px; margin: 0 0 16px 0;">Course Outline</h2>
+
+        <!-- Week 1 -->
+        <div class="unit-card" id="unit-week-1">
+          <h3 class="unit-title">Week 1: Foundations of Microeconomics</h3>
+          <ul class="task-list">
+            <li class="task-row" id="task-w1-lec1">
+              <a href="#lec1">Lecture 1: Scarcity & Choices</a>
+              <span class="badge">Lecture</span>
+            </li>
+            <li class="task-row submitted" id="task-w1-a1" data-completed="true">
+              <a href="economics-assignment.html">Week 1 Assignment: Scarcity & Marginal Analysis</a>
+              <span class="badge badge-success">Score: 100%</span>
+            </li>
+            <li class="task-row" id="task-w1-q1">
+              <a href="economics-assignment.html">Week 1 Quiz: Foundations Concept Check</a>
+              <span class="badge badge-pending">Due Soon</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Week 2 -->
+        <div class="unit-card" id="unit-week-2">
+          <h3 class="unit-title">Week 2: Demand and Supply Equilibrium</h3>
+          <ul class="task-list">
+            <li class="task-row" id="task-w2-lec1">
+              <a href="#lec2">Lecture 2: Market Equilibrium & Price Discovery</a>
+              <span class="badge">Lecture</span>
+            </li>
+            <li class="task-row" id="task-w2-a2">
+              <a href="economics-assignment.html">Week 2 Assignment: Market Demand Dynamics</a>
+              <span class="badge badge-pending">Due Soon</span>
+            </li>
+            <li class="task-row" id="task-w2-p1">
+              <a href="economics-assignment.html">Week 2 Practice: Elasticity Problem Set</a>
+              <span class="badge badge-pending">Optional</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Week 3 -->
+        <div class="unit-card" id="unit-week-3">
+          <h3 class="unit-title">Week 3: Production, Costs, and Market Structures</h3>
+          <ul class="task-list">
+            <li class="task-row" id="task-w3-a3">
+              <a href="economics-assignment.html">Week 3 Assignment: Cost Functions & Profit Maximization</a>
+              <span class="badge badge-pending">Upcoming</span>
+            </li>
+            <li class="task-row" id="task-w3-survey">
+              <a href="#feedback">Mid-course Feedback Survey</a>
+              <span class="badge">Survey</span>
+            </li>
+          </ul>
+        </div>
+      </nav>
+
+      <!-- Main Content Area -->
+      <main class="main-view">
+        <h2>Welcome to Principles of Economics</h2>
+        <p>Use the course outline navigation on the left to access weekly assignments, quizzes, and lectures.</p>
+        <p>This page serves as a test fixture for Swayam404 Course Completion Mode.</p>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

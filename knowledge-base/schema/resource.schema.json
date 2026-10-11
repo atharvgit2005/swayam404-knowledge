@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/swayam404/swayam404-knowledge/main/schema/resource.schema.json",
+  "title": "Swayam404 Learning Resources",
+  "description": "Schema for learning materials, notes, worked examples, and authorized excerpts.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "resourceId",
+      "courseId",
+      "title",
+      "resourceType",
+      "content",
+      "topics",
+      "provenance",
+      "version",
+      "createdAt",
+      "updatedAt"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "resourceId": {
+        "type": "string",
+        "pattern": "^[a-z0-9_-]+$",
+        "description": "Stable unique resource ID."
+      },
+      "courseId": {
+        "type": "string",
+        "pattern": "^[a-z0-9_-]+$",
+        "description": "Associated course ID."
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Resource headline or title."
+      },
+      "resourceType": {
+        "type": "string",
+        "enum": [
+          "concept-summary",
+          "lecture-notes",
+          "transcript-excerpt",
+          "official-reference",
+          "learning-objective",
+          "worked-example",
+          "practice-explanation"
+        ],
+        "description": "Pedagogical category of the resource."
+      },
+      "content": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Educational body text, markdown, or notes content."
+      },
+      "topics": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Associated concept tags."
+      },
+      "provenance": {
+        "type": "object",
+        "required": [
+          "sourceTitle",
+          "license",
+          "retrievalDate"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "sourceTitle": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Originating publication, slide deck, or lecture name."
+          },
+          "sourceUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Public URL where source can be verified."
+          },
+          "authorOrPublisher": {
+            "type": "string",
+            "description": "Professor, author, or university creator."
+          },
+          "license": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Permitted redistribution license (e.g., CC-BY-4.0, Open Educational Resources)."
+          },
+          "attribution": {
+            "type": "string",
+            "description": "Required attribution statement."
+          },
+          "retrievalDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 retrieval date."
+          },
+          "lectureNumber": {
+            "type": "string",
+            "description": "Lecture unit number if applicable (e.g. Week 2 Lecture 4)."
+          },
+          "lectureTimestamp": {
+            "type": "string",
+            "description": "Video timestamp if applicable (e.g. 14:32)."
+          }
+        }
+      },
+      "version": {
+        "type": "string",
+        "pattern": "^\\d+\\.\\d+\\.\\d+$",
+        "description": "Resource revision version."
+      },
+      "contentHash": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$",
+        "description": "Optional SHA-256 hash of the content."
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "updatedAt": {
+        "type": "string",
+        "format": "date-time"
+      }
+    }
+  }
+}

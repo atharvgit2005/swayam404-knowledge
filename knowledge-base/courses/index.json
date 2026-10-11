@@ -1,0 +1,20 @@
+[
+  {
+    "courseId": "course-econ-101",
+    "courseTitle": "Principles of Economics (Synthetic Test Pack)",
+    "coursePackVersion": "1.0.0",
+    "resourceCount": 2,
+    "reviewRecordCount": 1,
+    "lastUpdated": "2026-01-15T00:00:00Z",
+    "contentHash": "48ff393d2b67e2aac0916ecbb54065acb77e91b91a5287c711ff97a7fdfd355a"
+  },
+  {
+    "courseId": "course-ent-201",
+    "courseTitle": "Entrepreneurship & Venture Initiation (Synthetic Test Pack)",
+    "coursePackVersion": "1.0.0",
+    "resourceCount": 1,
+    "reviewRecordCount": 1,
+    "lastUpdated": "2026-01-15T00:00:00Z",
+    "contentHash": "b7464e659d5c8e7fa1bb31892ad0fc93f60b613de8fff1a67294b405b0c28039"
+  }
+]

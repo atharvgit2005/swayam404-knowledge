@@ -54,7 +54,7 @@ async function runBuild() {
     },
   });
 
-  console.log('3/3: Building Content Script (self-contained IIFE)...');
+  console.log('3/4: Building Content Script (self-contained IIFE)...');
   await build({
     root,
     configFile: false,
@@ -75,6 +75,33 @@ async function runBuild() {
       rollupOptions: {
         output: {
           entryFileNames: 'content.js',
+          extend: true,
+        },
+      },
+    },
+  });
+
+  console.log('4/4: Building ChatGPT Content Script (self-contained IIFE)...');
+  await build({
+    root,
+    configFile: false,
+    resolve: {
+      alias: {
+        '@': path.resolve(root, './src'),
+      },
+    },
+    build: {
+      outDir: 'dist',
+      emptyOutDir: false,
+      lib: {
+        entry: path.resolve(root, 'src/content/chatgptContent.ts'),
+        name: 'Swayam404ChatGptBridge',
+        formats: ['iife'],
+        fileName: () => 'chatgptContent.js',
+      },
+      rollupOptions: {
+        output: {
+          entryFileNames: 'chatgptContent.js',
           extend: true,
         },
       },

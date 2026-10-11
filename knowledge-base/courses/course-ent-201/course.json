@@ -1,0 +1,22 @@
+{
+  "courseId": "course-ent-201",
+  "courseTitle": "Entrepreneurship & Venture Initiation (Synthetic Test Pack)",
+  "externalCourseId": "SWAYAM-ENTR-MINOR",
+  "provider": "SWAYAM",
+  "institution": "National Portal Synthetic Benchmark",
+  "language": "en",
+  "description": "Synthetic minor study pack covering venture ideation, value proposition canvas, and unit economics.",
+  "coursePackVersion": "1.0.0",
+  "publishedAt": "2026-01-15T00:00:00Z",
+  "updatedAt": "2026-01-15T00:00:00Z",
+  "topics": [
+    "value-proposition",
+    "customer-discovery",
+    "unit-economics",
+    "venture-capital"
+  ],
+  "learningObjectives": [
+    "Formulate product-market fit hypotheses",
+    "Compute customer acquisition cost and lifetime value"
+  ]
+}

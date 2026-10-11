@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/swayam404/swayam404-knowledge/main/schema/review-record.schema.json",
+  "title": "Swayam404 Released-Assessment Review Records",
+  "description": "Schema for past released-assessment questions and learning explanations. Prohibited from active assessment distribution.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "recordId",
+      "courseId",
+      "assignmentId",
+      "questionFingerprint",
+      "normalizedQuestionText",
+      "explanation",
+      "verificationStatus",
+      "verificationSource",
+      "releaseTimestamp",
+      "redistributionPermission",
+      "recordVersion",
+      "isReleased",
+      "provenance"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "recordId": {
+        "type": "string",
+        "pattern": "^[a-z0-9_-]+$",
+        "description": "Stable unique record identifier."
+      },
+      "courseId": {
+        "type": "string",
+        "pattern": "^[a-z0-9_-]+$",
+        "description": "Associated course identifier."
+      },
+      "assignmentId": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Identifier of the historical graded assignment (e.g. 2024-fall-w01)."
+      },
+      "questionFingerprint": {
+        "type": "string",
+        "minLength": 8,
+        "description": "Deterministic fingerprint (SHA-256 or hash) of the normalized question."
+      },
+      "normalizedQuestionText": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Normalized text of the released question."
+      },
+      "options": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Answer options if authorized for redistribution."
+      },
+      "explanation": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Educational explanation and learning rationale."
+      },
+      "verificationStatus": {
+        "type": "string",
+        "enum": [
+          "portal-confirmed",
+          "instructor-provided",
+          "source-supported",
+          "needs-review"
+        ],
+        "description": "Authoritative verification status. Student prior selection alone is NEVER portal-confirmed."
+      },
+      "verificationSource": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Origin of verification (e.g. portal_graded_feedback, instructor_office_hours, official_errata)."
+      },
+      "releaseTimestamp": {
+        "type": "string",
+        "format": "date-time",
+        "description": "ISO 8601 timestamp when this assignment feedback was officially made public."
+      },
+      "redistributionPermission": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Explicit redistribution permission or release notice."
+      },
+      "recordVersion": {
+        "type": "string",
+        "pattern": "^\\d+\\.\\d+\\.\\d+$",
+        "description": "Semantic version of this record."
+      },
+      "isReleased": {
+        "type": "boolean",
+        "enum": [true],
+        "description": "Must be true. Unreleased assessments are strictly prohibited."
+      },
+      "provenance": {
+        "type": "object",
+        "required": [
+          "sourceTitle",
+          "license",
+          "retrievalDate"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "sourceTitle": {
+            "type": "string",
+            "description": "Title of the released archive or graded portal feedback."
+          },
+          "sourceUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "authorOrPublisher": {
+            "type": "string"
+          },
+          "license": {
+            "type": "string",
+            "description": "Educational redistribution license."
+          },
+          "attribution": {
+            "type": "string"
+          },
+          "retrievalDate": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

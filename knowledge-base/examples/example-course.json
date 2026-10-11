@@ -1,0 +1,20 @@
+{
+  "courseId": "example-sample-course",
+  "courseTitle": "Example Sample Course (Template)",
+  "externalCourseId": "SWAYAM-SAMPLE-EXAMPLE",
+  "provider": "SWAYAM",
+  "institution": "Example University",
+  "language": "en",
+  "description": "Minimal template showing expected fields for a proposed course pack.",
+  "coursePackVersion": "1.0.0",
+  "publishedAt": "2026-01-01T00:00:00Z",
+  "updatedAt": "2026-01-01T00:00:00Z",
+  "topics": [
+    "example-topic-a",
+    "example-topic-b"
+  ],
+  "learningObjectives": [
+    "Define core definitions in topic A",
+    "Apply principles to solve problem B"
+  ]
+}

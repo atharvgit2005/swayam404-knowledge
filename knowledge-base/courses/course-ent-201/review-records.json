@@ -1,0 +1,30 @@
+[
+  {
+    "recordId": "ent-rev-001",
+    "courseId": "course-ent-201",
+    "assignmentId": "synthetic-ent-quiz-2025-w01",
+    "questionFingerprint": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    "normalizedQuestionText": "what is the recommended minimum ratio of customer lifetime value ltv to customer acquisition cost cac for venture backed software businesses",
+    "options": [
+      "3:1 or higher",
+      "1:1",
+      "0.5:1",
+      "10:1"
+    ],
+    "explanation": "A 3:1 LTV:CAC ratio ensures adequate gross margin to cover cost of goods sold, research and development, and operational overhead while maintaining unit profitability.",
+    "verificationStatus": "portal-confirmed",
+    "verificationSource": "portal_archived_graded_feedback",
+    "releaseTimestamp": "2025-12-05T00:00:00Z",
+    "redistributionPermission": "Synthetic released review test archive permitted for benchmarking.",
+    "recordVersion": "1.0.0",
+    "isReleased": true,
+    "provenance": {
+      "sourceTitle": "Synthetic Archive of Released Entrepreneurship Feedback",
+      "sourceUrl": "https://example.org/synthetic/feedback/ent-w01",
+      "authorOrPublisher": "Synthetic Portal Open Archive",
+      "license": "CC-BY-4.0",
+      "attribution": "Synthetic test feedback archive.",
+      "retrievalDate": "2026-01-15T00:00:00Z"
+    }
+  }
+]

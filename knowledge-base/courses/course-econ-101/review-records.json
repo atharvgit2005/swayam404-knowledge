@@ -1,0 +1,30 @@
+[
+  {
+    "recordId": "econ-rev-001",
+    "courseId": "course-econ-101",
+    "assignmentId": "synthetic-assignment-2025-w01",
+    "questionFingerprint": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "normalizedQuestionText": "what happens to total revenue when price increases and demand is price inelastic",
+    "options": [
+      "Total revenue increases",
+      "Total revenue decreases",
+      "Total revenue remains unchanged",
+      "Total revenue falls to zero"
+    ],
+    "explanation": "Because demand is inelastic (PED < 1), the percentage drop in quantity demanded is smaller than the percentage rise in price, causing total revenue (P x Q) to rise.",
+    "verificationStatus": "portal-confirmed",
+    "verificationSource": "portal_archived_graded_feedback",
+    "releaseTimestamp": "2025-12-01T00:00:00Z",
+    "redistributionPermission": "Synthetic released review test archive permitted for benchmarking.",
+    "recordVersion": "1.0.0",
+    "isReleased": true,
+    "provenance": {
+      "sourceTitle": "Synthetic Archive of Released Feedback — 2025",
+      "sourceUrl": "https://example.org/synthetic/feedback/w01",
+      "authorOrPublisher": "Synthetic Portal Open Archive",
+      "license": "CC-BY-4.0",
+      "attribution": "Synthetic test feedback archive.",
+      "retrievalDate": "2026-01-15T00:00:00Z"
+    }
+  }
+]

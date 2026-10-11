@@ -1,0 +1,23 @@
+[
+  {
+    "resourceId": "example-res-001",
+    "courseId": "example-sample-course",
+    "title": "Example Concept Summary",
+    "resourceType": "concept-summary",
+    "content": "A succinct explanation of a core principle with clear provenance and licensed attribution.",
+    "topics": ["example-topic-a"],
+    "provenance": {
+      "sourceTitle": "Example Open Textbook, Chapter 1",
+      "sourceUrl": "https://example.org/open-textbook/ch1",
+      "authorOrPublisher": "Example Author",
+      "license": "CC-BY-4.0",
+      "attribution": "Used under Creative Commons Attribution 4.0 International license.",
+      "retrievalDate": "2026-01-01T00:00:00Z",
+      "lectureNumber": "Lecture 1",
+      "lectureTimestamp": "05:00"
+    },
+    "version": "1.0.0",
+    "createdAt": "2026-01-01T00:00:00Z",
+    "updatedAt": "2026-01-01T00:00:00Z"
+  }
+]

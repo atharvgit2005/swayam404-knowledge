@@ -1,0 +1,22 @@
+[
+  {
+    "resourceId": "ent-res-001",
+    "courseId": "course-ent-201",
+    "title": "Concept Summary: Customer Acquisition Cost (CAC)",
+    "resourceType": "concept-summary",
+    "content": "Customer Acquisition Cost (CAC) is the total marketing and sales expenditure divided by the number of new customers acquired during that period. Sustainable startup unit economics generally require an LTV to CAC ratio greater than or equal to 3.",
+    "topics": ["unit-economics", "cac", "ltv"],
+    "provenance": {
+      "sourceTitle": "Synthetic Entrepreneurship Handbook — Chapter 2",
+      "sourceUrl": "https://example.org/synthetic/entrepreneurship/ch2",
+      "authorOrPublisher": "Synthetic Open Education Project",
+      "license": "CC-BY-4.0",
+      "attribution": "Synthetic study materials created for benchmark testing.",
+      "retrievalDate": "2026-01-15T00:00:00Z",
+      "lectureNumber": "Lecture 2"
+    },
+    "version": "1.0.0",
+    "createdAt": "2026-01-15T00:00:00Z",
+    "updatedAt": "2026-01-15T00:00:00Z"
+  }
+]

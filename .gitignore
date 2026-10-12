@@ -12,3 +12,4 @@ local-backups/
 dist-installer/
 installer-app/node_modules
 installer-app/package-lock.json
+admin-panel/data/*.json

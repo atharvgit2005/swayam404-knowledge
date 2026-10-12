@@ -11,11 +11,11 @@
 
 # ⚡ swayam404 — The SWAYAM Assignment Assistant
 
-### 🌐 Official Website: [swayam404.vercel.app](https://swayam404.vercel.app) • 📦 Release: [v1.1.0](https://github.com/atharvgit2005/swayam404-knowledge/releases/tag/v1.1.0)
+### 🌐 Official Website: [swayam404.vercel.app](https://swayam404.vercel.app) • 📦 Release: [v1.2.0](https://github.com/atharvgit2005/swayam404-knowledge/releases/tag/v1.2.0)
 
 [![Website](https://img.shields.io/badge/Official%20Website-swayam404.vercel.app-ffcc00?style=for-the-badge&logo=vercel&logoColor=black&labelColor=1a1a1a)](https://swayam404.vercel.app)
 [![GitHub Release](https://img.shields.io/github/v/release/atharvgit2005/swayam404-knowledge?color=38bdf8&label=Release&style=for-the-badge&logo=github)](https://github.com/atharvgit2005/swayam404-knowledge/releases/latest)
-[![Tests Passing](https://img.shields.io/badge/Tests-396%20Passed-22c55e?style=for-the-badge&logo=vitest&logoColor=white&labelColor=1a1a1a)](https://github.com/atharvgit2005/swayam404-knowledge/actions)
+[![Tests Passing](https://img.shields.io/badge/Tests-404%20Passed-22c55e?style=for-the-badge&logo=vitest&logoColor=white&labelColor=1a1a1a)](https://github.com/atharvgit2005/swayam404-knowledge/actions)
 [![API Keys](https://img.shields.io/badge/API%20Keys-ZERO%20(100%25%20FREE)-ffcc00?style=for-the-badge&logoColor=black&labelColor=1a1a1a)](https://swayam404.vercel.app)
 [![License](https://img.shields.io/badge/License-MIT-f8fafc?style=for-the-badge&labelColor=1a1a1a)](LICENSE)
 
@@ -34,18 +34,18 @@
 
 ---
 
-## 📦 Download Center (v1.1.0)
+## 📦 Download Center (v1.2.0)
 
-Download the pre-packaged installer or extension directly—**no Node.js or build steps required on target computers**:
+Download the pre-packaged companion installer app—**no Node.js or build steps required on target computers**:
 
-| Platform | Download Link | Type | How to Run |
+| Platform | Edge CDN (Instant Download) | GitHub Release Mirror | How to Run |
 | :--- | :--- | :--- | :--- |
-| **🍎 macOS** | [**Swayam404-Installer-macOS.dmg**](https://github.com/atharvgit2005/swayam404-knowledge/releases/download/v1.1.0/Swayam404-Installer-macOS.dmg) | Apple Disk Image (`.dmg`) | Double-click to mount → Load `dist` in Chrome |
-| **🍏 macOS (Portable)** | [**Swayam404-Installer-macOS.zip**](https://github.com/atharvgit2005/swayam404-knowledge/releases/download/v1.1.0/Swayam404-Installer-macOS.zip) | Portable ZIP | Double-click `Start-Installer.command` |
-| **🪟 Windows** | [**Swayam404-Installer-Windows.zip**](https://github.com/atharvgit2005/swayam404-knowledge/releases/download/v1.1.0/Swayam404-Installer-Windows.zip) | Portable ZIP | Double-click `Swayam404-Installer-Windows.bat` |
-| **🧩 Chrome / Brave** | [**swayam404-extension-v1.1.0.zip**](https://github.com/atharvgit2005/swayam404-knowledge/releases/download/v1.1.0/swayam404-extension-v1.1.0.zip) | Extension Package | Unzip → `chrome://extensions` → Load unpacked |
+| **🍎 macOS (DMG)** | [**Download DMG (549 KB)**](https://swayam404.vercel.app/installers/Swayam404-Installer-macOS.dmg) | [GitHub Mirror](https://github.com/atharvgit2005/swayam404-knowledge/releases/download/v1.2.0/Swayam404-Installer-macOS.dmg) | Double-click DMG ➔ Run `🚀 1-Click Install` or drag to Applications |
+| **🍏 macOS (Portable ZIP)** | [**Download ZIP (568 KB)**](https://swayam404.vercel.app/installers/Swayam404-Installer-macOS.zip) | [GitHub Mirror](https://github.com/atharvgit2005/swayam404-knowledge/releases/download/v1.2.0/Swayam404-Installer-macOS.zip) | Unzip ➔ Double-click `Start-Installer.command` |
+| **🪟 Windows** | [**Download ZIP (278 KB)**](https://swayam404.vercel.app/installers/Swayam404-Installer-Windows.zip) | [GitHub Mirror](https://github.com/atharvgit2005/swayam404-knowledge/releases/download/v1.2.0/Swayam404-Installer-Windows.zip) | Unzip ➔ Double-click `Swayam404-Installer-Windows.bat` |
+| **🧩 Extension dist** | Available via Installer App | [GitHub Mirror](https://github.com/atharvgit2005/swayam404-knowledge/releases/download/v1.2.0/swayam404-extension-v1.2.0.zip) | Unzip ➔ `chrome://extensions` ➔ Load unpacked |
 
-*All releases are cryptographically SHA-256 verified and available on the [GitHub Releases Page](https://github.com/atharvgit2005/swayam404-knowledge/releases/latest).*
+*All releases are cryptographically SHA-256 verified and mirrored on [GitHub Releases](https://github.com/atharvgit2005/swayam404-knowledge/releases/latest).*
 
 ---
 
@@ -106,8 +106,21 @@ Forget paying for OpenAI API credits or begging Google Cloud for Gemini API quot
 
 ## 🛠️ Quick Installation (Takes 30 Seconds)
 
-### Method A: Direct Chrome Installation (Fastest)
-1. Download [**swayam404-extension-v1.1.0.zip**](https://github.com/atharvgit2005/swayam404-knowledge/releases/download/v1.1.0/swayam404-extension-v1.1.0.zip) and extract it.
+### Method A: Using the Companion Desktop Installer (Recommended)
+1. **macOS**:
+   - Download [**Swayam404-Installer-macOS.dmg**](https://swayam404.vercel.app/installers/Swayam404-Installer-macOS.dmg)
+   - Double-click the DMG and run **`🚀 1-Click Install to Applications.command`** (or drag `Swayam404 Installer` to `Applications`).
+   - If macOS Sequoia prompts with a Gatekeeper warning:
+     - Right-click `Swayam404 Installer` ➔ click **Open**
+     - Or go to **System Settings ➔ Privacy & Security ➔ Security ➔ Open Anyway**.
+   - Inside the app, click **"Install Extension"** or **"Update to Latest"** to sync local files and open `chrome://extensions`.
+
+2. **Windows**:
+   - Download [**Swayam404-Installer-Windows.zip**](https://swayam404.vercel.app/installers/Swayam404-Installer-Windows.zip)
+   - Extract and double-click `Swayam404-Installer-Windows.bat`.
+
+### Method B: Manual Chrome Installation
+1. Download [**swayam404-extension-v1.2.0.zip**](https://github.com/atharvgit2005/swayam404-knowledge/releases/download/v1.2.0/swayam404-extension-v1.2.0.zip) and extract it.
 2. In Google Chrome (or Brave / Arc / Edge), navigate to:
    ```text
    chrome://extensions
@@ -116,7 +129,7 @@ Forget paying for OpenAI API credits or begging Google Cloud for Gemini API quot
 4. Click **Load unpacked** in the top-left corner.
 5. Select the extracted `dist` folder.
 
-### Method B: Developer Build from Source
+### Method C: Developer Build from Source
 ```bash
 # Clone the repository
 git clone https://github.com/atharvgit2005/swayam404-knowledge.git
@@ -125,7 +138,7 @@ cd swayam404-knowledge
 # Install dependencies
 npm install
 
-# Run test suite (396 tests)
+# Run test suite (404 tests)
 npm test
 
 # Build production bundle
@@ -145,17 +158,9 @@ npm run package:installer
 
 ---
 
-## 👥 Contributors & Community
+## 🧪 Bulletproof Testing (404 Automated Tests)
 
-Built with 🖤 for engineering students everywhere.
-
-* 🌐 **Official Website**: [https://swayam404.vercel.app](https://swayam404.vercel.app)
-* 🐙 **GitHub Repository**: [https://github.com/atharvgit2005/swayam404-knowledge](https://github.com/atharvgit2005/swayam404-knowledge)
-* 📄 **License**: MIT License © 2026 Atharv Paharia
-
-## 🧪 Bulletproof Testing (396 Automated Tests)
-
-This codebase is engineered like a tank. We run **396 automated unit and integration tests across 25 test suites** before every release:
+This codebase is engineered like a tank. We run **404 automated unit and integration tests across 26 test suites** before every release:
 
 ```bash
 # Run the entire automated test suite

@@ -416,42 +416,81 @@
       <div class="status-toast" id="status-toast">Ready. Click 'Check for Updates' to verify GitHub release.</div>
     </div>
 
-    <!-- Chrome Setup Card -->
-    <div class="activation-card">
+    <!-- Guided Chrome Activation Triggers Card -->
+    <div class="activation-card" id="activation-card">
       <div class="step-title">
         <svg class="lucide-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/>
-          <line x1="12" x2="12" y1="16" y2="12"/>
-          <line x1="12" x2="12.01" y1="8" y2="8"/>
+          <polygon points="12 8 8 12 12 16 12 13 16 13 16 11 12 11 12 8"/>
         </svg>
-        <span>Chrome Setup (First-Time Only)</span>
+        <span>Chrome Setup & Interactive Triggers</span>
       </div>
 
-      <div class="path-row">
-        <input type="text" class="path-input" id="path-display" readonly value="Downloads/swayam404-extension" />
-        <button type="button" class="btn-copy" id="btn-copy" onclick="copyPath()">
+      <!-- Auto-Copy Feedback Banner -->
+      <div id="auto-copy-banner" style="display: none; background: #064e3b; border: 1.5px solid #10b981; color: #a7f3d0; padding: 8px 10px; font-size: 11px; font-weight: 700; border-radius: 4px; text-align: center;">
+        📋 Extension saved & path copied to clipboard!
+      </div>
+
+      <!-- Path Location Display & Copy -->
+      <div>
+        <div style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">
+          Saved Extension Folder Location:
+        </div>
+        <div class="path-row">
+          <input type="text" class="path-input" id="path-display" readonly value="Downloads/swayam404-extension" />
+          <button type="button" class="btn-copy" id="btn-copy" onclick="copyPath()">
+            <svg class="lucide-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+              <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+            </svg>
+            <span id="btn-copy-label">Copy</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Direct Real Action Triggers -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px;">
+        <button type="button" class="btn-chrome" style="background: #38bdf8; color: #000; font-size: 10px; padding: 8px;" onclick="revealExtensionFolder()">
           <svg class="lucide-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
-            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+            <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>
           </svg>
-          <span>Copy</span>
+          <span>📁 Reveal in Folder</span>
+        </button>
+
+        <button type="button" class="btn-chrome" style="background: var(--yellow); color: #000; font-size: 10px; padding: 8px;" onclick="openChromeExtensions()">
+          <svg class="lucide-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" x2="21" y1="14" y2="3"/>
+          </svg>
+          <span>🚀 Open Extensions</span>
         </button>
       </div>
 
-      <ol class="steps-list">
-        <li>Click <strong>Open Chrome Extensions</strong> below.</li>
-        <li>Turn <strong>Developer mode</strong> ON in the top-right corner.</li>
-        <li>Click <strong>Load unpacked</strong> and select the copied folder in Downloads.</li>
-      </ol>
-
-      <button type="button" class="btn-chrome" onclick="openChromeExtensions()">
-        <svg class="lucide-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-          <polyline points="15 3 21 3 21 9"/>
-          <line x1="10" x2="21" y1="14" y2="3"/>
-        </svg>
-        <span>Open Chrome Extensions</span>
-      </button>
+      <!-- Step-by-Step Trigger Checklist -->
+      <div style="margin-top: 6px; background: #000; border: 1.5px solid #334155; padding: 8px 10px; border-radius: 4px;">
+        <div style="font-size: 10px; font-weight: 800; color: var(--yellow); text-transform: uppercase; margin-bottom: 6px;">
+          Guided Trigger Checklist:
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px; line-height: 1.4;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="background: #1e293b; color: #fff; padding: 1px 5px; font-size: 9px; font-weight: 900; border-radius: 3px;">1</span>
+            <span>Click <strong>Open Extensions</strong> (opens <code>chrome://extensions</code>)</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="background: #1e293b; color: #fff; padding: 1px 5px; font-size: 9px; font-weight: 900; border-radius: 3px;">2</span>
+            <span>Turn ON <strong>Developer mode</strong> in top-right switch</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="background: #1e293b; color: #fff; padding: 1px 5px; font-size: 9px; font-weight: 900; border-radius: 3px;">3</span>
+            <span>Click <strong>Load unpacked</strong> and select the revealed folder</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="background: #1e293b; color: #fff; padding: 1px 5px; font-size: 9px; font-weight: 900; border-radius: 3px;">4</span>
+            <span>Pin <strong>swayam404</strong> to your toolbar & enjoy!</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -621,13 +660,15 @@
       const toast = document.getElementById('status-toast');
       btn.disabled = true;
       btnText.textContent = 'Installing...';
-      toast.textContent = 'Installing extension into Downloads/swayam404-extension...';
+      toast.textContent = 'Unpacking extension into Downloads/swayam404-extension...';
 
       try {
         const res = await fetch('/api/build', { method: 'POST' });
         const json = await res.json();
         if (json.success) {
-          toast.textContent = 'Extension installed successfully! Ready to load in Chrome.';
+          toast.textContent = 'Extension unpacked! Ready to load in Chrome.';
+          // Automatically copy location path & trigger guided banner
+          copyPath(true);
         } else {
           toast.textContent = `Installation failed: ${json.error || 'Error'}`;
         }
@@ -640,11 +681,40 @@
       }
     }
 
-    function copyPath() {
+    function copyPath(isAuto = false) {
       const input = document.getElementById('path-display');
-      navigator.clipboard.writeText(input.value);
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(input.value);
+      }
+      const label = document.getElementById('btn-copy-label');
+      if (label) {
+        label.textContent = 'COPIED!';
+        setTimeout(() => { label.textContent = 'Copy'; }, 2500);
+      }
+      const banner = document.getElementById('auto-copy-banner');
+      if (banner) {
+        banner.style.display = 'block';
+        banner.textContent = isAuto
+          ? '🎉 Extension saved to Downloads! Path auto-copied to clipboard. Use triggers below.'
+          : '📋 Extension path copied to clipboard!';
+        setTimeout(() => { banner.style.display = 'none'; }, 4500);
+      }
       const toast = document.getElementById('status-toast');
-      toast.textContent = 'Path copied to clipboard.';
+      toast.textContent = 'Path copied to clipboard. Ready for Chrome Load unpacked.';
+    }
+
+    async function revealExtensionFolder() {
+      try {
+        await fetch('/api/open-folder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target: 'install' }),
+        });
+        const toast = document.getElementById('status-toast');
+        toast.textContent = 'Opened Downloads/swayam404-extension in Finder / Explorer.';
+      } catch (e) {
+        console.error('Error revealing folder:', e);
+      }
     }
 
     async function openChromeExtensions() {

@@ -552,10 +552,26 @@ export function createInstallerAppServer(options = {}) {
       }
 
       if (pathname === '/api/build' && req.method === 'POST') {
+        const distManifestPath = path.join(root, 'dist', 'manifest.json');
+        if (fs.existsSync(distManifestPath)) {
+          syncToUserInstallDir();
+          let distVersion = '1.1.0';
+          try {
+            distVersion = JSON.parse(fs.readFileSync(distManifestPath, 'utf8')).version || '1.1.0';
+          } catch {}
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({
+            success: true,
+            version: distVersion,
+            installDir: userInstallDir,
+            message: 'Extension unpacked successfully to Downloads',
+          }));
+        }
+
         const result = await runNpmScript(['run', 'build']);
         syncToUserInstallDir();
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ success: true, output: result.stdout }));
+        return res.end(JSON.stringify({ success: true, output: result.stdout, installDir: userInstallDir }));
       }
 
       if (pathname === '/api/release/create' && req.method === 'POST') {
@@ -612,7 +628,11 @@ export function createInstallerAppServer(options = {}) {
 
       if (pathname === '/api/open-folder' && req.method === 'POST') {
         const body = await parseJsonBody(req);
-        const target = body.target === 'releases' ? path.join(root, 'local-releases') : path.join(root, 'dist');
+        syncToUserInstallDir();
+        let target = userInstallDir;
+        if (body.target === 'releases') target = path.join(root, 'local-releases');
+        else if (body.target === 'dist') target = path.join(root, 'dist');
+        else target = userInstallDir;
         openDirectory(target);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         return res.end(JSON.stringify({ success: true, target }));

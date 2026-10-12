@@ -378,9 +378,51 @@
       </div>
 
       <div class="kpi-card">
-        <div class="kpi-title">📦 v1.1.0 Adoption</div>
-        <div class="kpi-value" id="kpi-adoption" style="color: var(--yellow);">100%</div>
-        <div class="kpi-sub">Running latest extension release</div>
+        <div class="kpi-title">📦 GitHub Installer Downloads</div>
+        <div class="kpi-value" id="kpi-github-dl" style="color: var(--yellow);">0</div>
+        <div class="kpi-sub" id="kpi-github-sub">DMG & ZIP packages fetched</div>
+      </div>
+    </div>
+
+    <!-- GitHub Release & Distribution Matrix -->
+    <div class="brutal-card" style="margin-bottom: 24px; background: #0c1322;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid var(--black); padding-bottom: 8px;">
+        <h3 style="font-size: 15px; text-transform: uppercase; display: flex; align-items: center; gap: 8px;">
+          <span>📦 GitHub Releases & Distribution Reach</span>
+          <span class="tag tag-chrome" id="github-releases-count">v1.1.0 Active</span>
+        </h3>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <span style="font-size: 11px; color: var(--text-muted); font-weight: 700;">★ <span id="github-stars">0</span> Stars • ⑂ <span id="github-forks">0</span> Forks</span>
+          <a href="https://github.com/atharvgit2005/swayam404-knowledge/releases" target="_blank" rel="noopener noreferrer" class="btn-brutal" style="padding: 4px 8px; font-size: 10px;">
+            GitHub Releases ↗
+          </a>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+        <div style="background: #1e293b; border: 2px solid var(--black); padding: 10px 12px; box-shadow: 2px 2px 0px var(--black);">
+          <div style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">🍎 macOS DMG Installer</div>
+          <div style="font-size: 20px; font-weight: 900; color: #fff; margin-top: 4px;" id="gh-dmg-count">0</div>
+          <div style="font-size: 10px; color: #94a3b8;">Direct disk image downloads</div>
+        </div>
+
+        <div style="background: #1e293b; border: 2px solid var(--black); padding: 10px 12px; box-shadow: 2px 2px 0px var(--black);">
+          <div style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">🪟 Windows Installer ZIP</div>
+          <div style="font-size: 20px; font-weight: 900; color: #fff; margin-top: 4px;" id="gh-win-count">0</div>
+          <div style="font-size: 10px; color: #94a3b8;">Standalone batch installer</div>
+        </div>
+
+        <div style="background: #1e293b; border: 2px solid var(--black); padding: 10px 12px; box-shadow: 2px 2px 0px var(--black);">
+          <div style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">🍏 macOS ZIP Package</div>
+          <div style="font-size: 20px; font-weight: 900; color: #fff; margin-top: 4px;" id="gh-maczip-count">0</div>
+          <div style="font-size: 10px; color: #94a3b8;">Command script installer</div>
+        </div>
+
+        <div style="background: #1e293b; border: 2px solid var(--black); padding: 10px 12px; box-shadow: 2px 2px 0px var(--black);">
+          <div style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">⚙️ Extension Package</div>
+          <div style="font-size: 20px; font-weight: 900; color: #fff; margin-top: 4px;" id="gh-ext-count">0</div>
+          <div style="font-size: 10px; color: #94a3b8;">Packed CRX / Release ZIP</div>
+        </div>
       </div>
     </div>
 
@@ -518,11 +560,20 @@
       document.getElementById('kpi-24h').textContent = stats.active24h || 0;
       document.getElementById('kpi-7d').textContent = stats.active7d || 0;
 
-      // Calculate v1.1.0 adoption rate
-      const v110Count = stats.versionBreakdown?.['1.1.0'] || 0;
-      const total = stats.totalBrowsers || 1;
-      const rate = total > 0 ? Math.round((v110Count / total) * 100) : 100;
-      document.getElementById('kpi-adoption').textContent = `${rate}%`;
+      // Populate GitHub Metrics
+      const gh = stats.github || {};
+      document.getElementById('kpi-github-dl').textContent = gh.totalDownloads || 0;
+      if (document.getElementById('gh-dmg-count')) {
+        document.getElementById('gh-dmg-count').textContent = gh.assetDownloads?.macDmg || 0;
+        document.getElementById('gh-win-count').textContent = gh.assetDownloads?.windowsZip || 0;
+        document.getElementById('gh-maczip-count').textContent = gh.assetDownloads?.macZip || 0;
+        document.getElementById('gh-ext-count').textContent = gh.assetDownloads?.extensionZip || 0;
+        document.getElementById('github-stars').textContent = gh.stars || 0;
+        document.getElementById('github-forks').textContent = gh.forks || 0;
+        if (gh.releasesCount) {
+          document.getElementById('github-releases-count').textContent = `${gh.releasesCount} Release(s) Published`;
+        }
+      }
 
       // Render Browser Meters
       const bContainer = document.getElementById('browser-meters');

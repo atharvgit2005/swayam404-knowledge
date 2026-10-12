@@ -36,6 +36,78 @@ let telemetryStore = {
   history: [], // Recent 100 ping records
 };
 
+// In-memory GitHub distribution metrics cache
+export let cachedGitHubStats = {
+  totalDownloads: 0,
+  assetDownloads: {
+    macDmg: 0,
+    macZip: 0,
+    windowsZip: 0,
+    extensionZip: 0,
+  },
+  releasesCount: 0,
+  stars: 0,
+  forks: 0,
+  openIssues: 0,
+  lastUpdated: null,
+};
+
+export async function fetchGitHubMetrics(repo = 'atharvgit2005/swayam404-knowledge') {
+  const now = Date.now();
+  if (cachedGitHubStats.lastUpdated && (now - new Date(cachedGitHubStats.lastUpdated).getTime()) < 60000) {
+    return cachedGitHubStats;
+  }
+  try {
+    const headers = { 'User-Agent': 'swayam404-admin-telemetry' };
+    const [relRes, repoRes] = await Promise.all([
+      fetch(`https://api.github.com/repos/${repo}/releases`, { headers }),
+      fetch(`https://api.github.com/repos/${repo}`, { headers }),
+    ]);
+
+    if (relRes.ok) {
+      const releases = await relRes.json();
+      let totalDownloads = 0;
+      const assetDownloads = {
+        macDmg: 0,
+        macZip: 0,
+        windowsZip: 0,
+        extensionZip: 0,
+      };
+
+      if (Array.isArray(releases)) {
+        for (const rel of releases) {
+          if (Array.isArray(rel.assets)) {
+            for (const asset of rel.assets) {
+              const count = asset.download_count || 0;
+              totalDownloads += count;
+              const name = (asset.name || '').toLowerCase();
+              if (name.endsWith('.dmg')) assetDownloads.macDmg += count;
+              else if (name.includes('installer-macos') || name.includes('mac.zip')) assetDownloads.macZip += count;
+              else if (name.includes('windows')) assetDownloads.windowsZip += count;
+              else if (name.includes('extension')) assetDownloads.extensionZip += count;
+            }
+          }
+        }
+      }
+      cachedGitHubStats.totalDownloads = totalDownloads;
+      cachedGitHubStats.assetDownloads = assetDownloads;
+      cachedGitHubStats.releasesCount = Array.isArray(releases) ? releases.length : 0;
+    }
+
+    if (repoRes.ok) {
+      const repoData = await repoRes.json();
+      cachedGitHubStats.stars = repoData.stargazers_count || 0;
+      cachedGitHubStats.forks = repoData.forks_count || 0;
+      cachedGitHubStats.openIssues = repoData.open_issues_count || 0;
+    }
+
+    cachedGitHubStats.lastUpdated = new Date().toISOString();
+  } catch (err) {
+    console.warn('[Admin] Error fetching GitHub metrics:', err.message);
+  }
+  return cachedGitHubStats;
+}
+
 // In-memory active sessions: { [token]: { user, expiresAt, provider } }
 export const activeSessions = new Map();
 
@@ -157,6 +229,7 @@ export function computeStats() {
     platformBreakdown: platformCounts,
     versionBreakdown: versionCounts,
     recentPings: telemetryStore.history.slice(0, 25),
+    github: cachedGitHubStats,
     googleAuthStatus: {
       configured: Boolean(GOOGLE_CLIENT_ID),
       clientId: GOOGLE_CLIENT_ID ? `${GOOGLE_CLIENT_ID.slice(0, 12)}...` : null,
@@ -334,6 +407,7 @@ export async function handleAdminRequest(req, res, options = {}) {
         return res.end(JSON.stringify({ error: 'Unauthorized. Please sign in with Google Auth.' }));
       }
 
+      await fetchGitHubMetrics();
       const stats = computeStats();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ success: true, stats, sessionUser: session?.user || { name: 'Preview Mode' } }));

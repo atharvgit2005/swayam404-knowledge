@@ -47,20 +47,59 @@ export function bundleInstallerPackages() {
   }
 
   // ----------------------------------------------------
-  // 1. Package macOS Distribution
   // ----------------------------------------------------
-  console.log('🍎 Assembling macOS installer package...');
+  // 1. Package macOS Distribution & DMG Staging
+  // ----------------------------------------------------
+  console.log('🍎 Assembling macOS installer package & DMG...');
   const macAppSrc = path.join(installerAppDir, 'mac', 'Swayam404 Installer.app');
   const macCommandSrc = path.join(installerAppDir, 'mac', 'Swayam404 Installer.command');
   const rootMacCommand = path.join(root, 'Swayam404-Installer-Mac.command');
 
-  // Copy dist extension folder
+  // Copy dist extension folder for manual inspection / zip
   fs.cpSync(distDir, path.join(MAC_DIR, 'dist'), { recursive: true });
 
-  // Copy app bundle and launcher scripts
+  // Prepare self-contained Swayam404 Installer.app in MAC_DIR
+  const macAppDest = path.join(MAC_DIR, 'Swayam404 Installer.app');
   if (fs.existsSync(macAppSrc)) {
-    fs.cpSync(macAppSrc, path.join(MAC_DIR, 'Swayam404 Installer.app'), { recursive: true });
+    fs.cpSync(macAppSrc, macAppDest, { recursive: true });
   }
+
+  // Embed full app resources into Swayam404 Installer.app/Contents/Resources/app
+  const appResourcesDir = path.join(macAppDest, 'Contents', 'Resources', 'app');
+  fs.mkdirSync(appResourcesDir, { recursive: true });
+  fs.cpSync(path.join(installerAppDir, 'server.mjs'), path.join(appResourcesDir, 'server.mjs'));
+  fs.cpSync(path.join(installerAppDir, 'public'), path.join(appResourcesDir, 'public'), { recursive: true });
+  fs.cpSync(path.join(installerAppDir, 'lib'), path.join(appResourcesDir, 'lib'), { recursive: true });
+  fs.cpSync(distDir, path.join(appResourcesDir, 'dist'), { recursive: true });
+
+  // Compile Swift native window if swiftc is available
+  try {
+    const swiftSrc = path.join(installerAppDir, 'mac', 'tray-app.swift');
+    const binTarget = path.join(macAppDest, 'Contents', 'MacOS', 'native-window');
+    if (fs.existsSync(swiftSrc) && process.platform === 'darwin') {
+      execFileSync('swiftc', ['-O', '-o', binTarget, swiftSrc]);
+      fs.chmodSync(binTarget, 0o755);
+    }
+  } catch (swiftErr) {
+    console.warn('Note: Using fallback browser window launcher:', swiftErr.message);
+  }
+
+  // Ensure launcher is executable
+  const launcherPath = path.join(macAppDest, 'Contents', 'MacOS', 'launcher');
+  if (fs.existsSync(launcherPath)) {
+    fs.chmodSync(launcherPath, 0o755);
+  }
+
+  // Ad-hoc codesign the application bundle on macOS
+  if (process.platform === 'darwin') {
+    try {
+      execFileSync('codesign', ['--force', '--deep', '-s', '-', macAppDest]);
+      console.log('✅ Ad-hoc codesigned Swayam404 Installer.app');
+    } catch (signErr) {
+      console.warn('Note: Ad-hoc signing note:', signErr.message);
+    }
+  }
+
   if (fs.existsSync(macCommandSrc)) {
     fs.copyFileSync(macCommandSrc, path.join(MAC_DIR, 'Swayam404 Installer.command'));
     fs.chmodSync(path.join(MAC_DIR, 'Swayam404 Installer.command'), 0o755);
@@ -70,29 +109,61 @@ export function bundleInstallerPackages() {
     fs.chmodSync(path.join(MAC_DIR, 'Start-Installer.command'), 0o755);
   }
 
-  // Copy installer-app assets (server.mjs, public)
-  fs.cpSync(installerAppDir, path.join(MAC_DIR, 'installer-app'), { recursive: true });
+  // 1-Click Gatekeeper Helper Script
+  const gatekeeperFixScript = `#!/bin/bash
+DIR="$(cd "$(dirname "$0")" && pwd)"
+APP_NAME="Swayam404 Installer.app"
+
+echo "========================================================"
+echo "⚡ Swayam404 macOS Gatekeeper Security Helper"
+echo "========================================================"
+echo "Clearing macOS quarantine attribute..."
+
+xattr -d com.apple.quarantine "$DIR/$APP_NAME" 2>/dev/null || xattr -cr "$DIR/$APP_NAME" 2>/dev/null
+xattr -d com.apple.quarantine "/Applications/$APP_NAME" 2>/dev/null || xattr -cr "/Applications/$APP_NAME" 2>/dev/null
+
+echo "✅ Quarantine cleared! Launching Swayam404 Installer..."
+if [ -d "/Applications/$APP_NAME" ]; then
+    open "/Applications/$APP_NAME"
+else
+    open "$DIR/$APP_NAME"
+fi
+exit 0
+`;
+  const fixScriptPath = path.join(MAC_DIR, 'Open First Time (Gatekeeper Fix).command');
+  fs.writeFileSync(fixScriptPath, gatekeeperFixScript);
+  fs.chmodSync(fixScriptPath, 0o755);
 
   // Add macOS README
-  const macReadme = `# Swayam404 Desktop Installer & Chrome Extension (macOS)
+  const macReadme = `# Swayam404 Desktop Installer (macOS)
 
-## Quick Start on Mac:
-Method A (Direct Load - Fastest):
-1. Open Google Chrome (or Brave / Edge / Arc) to: chrome://extensions
-2. Toggle "Developer mode" ON (top right corner).
-3. Click "Load unpacked" (top left).
-4. Select the "dist" folder included in this package.
-5. The Swayam404 extension is now active and ready to use!
+============================================================
+HOW TO INSTALL:
+============================================================
+1. Drag "Swayam404 Installer" into the "Applications" folder.
+2. Open "Applications" and double-click "Swayam404 Installer".
 
-Method B (Installer Dashboard App):
-1. Double-click "Start-Installer.command" or "Swayam404 Installer.app".
-2. If macOS displays a Gatekeeper security warning:
-   - Right-click "Start-Installer.command" -> Open -> Click "Open"
-3. The dashboard opens at http://127.0.0.1:52410 where you can manage updates and check status.
+============================================================
+IF macOS BLOCKS WITH "Apple could not verify..."
+============================================================
+Because this is an open-source tool built by students without a $99/yr Apple certificate,
+macOS Gatekeeper protects your Mac. Choose ANY of these 3 easy ways:
 
-All updates and releases can be applied with one click!
+OPTION A (Fastest 1-Click):
+• Double-click "Open First Time (Gatekeeper Fix).command" in this window!
+
+OPTION B (Standard macOS Right-Click):
+• Right-click (or Control-click) "Swayam404 Installer"
+• Click "Open"
+• Click "Open" in the prompt.
+
+OPTION C (System Settings):
+• Open System Settings > Privacy & Security
+• Scroll down to the "Security" section
+• Click "Open Anyway" next to Swayam404 Installer!
+============================================================
 `;
-  fs.writeFileSync(path.join(MAC_DIR, 'README.txt'), macReadme);
+  fs.writeFileSync(path.join(MAC_DIR, 'HOW TO INSTALL.txt'), macReadme);
 
   // ----------------------------------------------------
   // 2. Package Windows Distribution
@@ -150,13 +221,24 @@ All future updates will be applied automatically from GitHub or local releases w
     execFileSync(zipBin, ['-r', '-q', winZip, '.'], { cwd: WIN_DIR });
 
     if (process.platform === 'darwin') {
-      console.log('💿 Creating macOS DMG disk image with hdiutil...');
+      console.log('💿 Creating macOS DMG disk image with drag-to-Applications layout...');
+      const DMG_STAGING = path.join(OUT_DIR, 'dmg-staging');
+      if (fs.existsSync(DMG_STAGING)) fs.rmSync(DMG_STAGING, { recursive: true, force: true });
+      fs.mkdirSync(DMG_STAGING, { recursive: true });
+
+      // In DMG staging: copy app, symlink Applications, gatekeeper helper, and readme
+      fs.cpSync(macAppDest, path.join(DMG_STAGING, 'Swayam404 Installer.app'), { recursive: true });
+      fs.symlinkSync('/Applications', path.join(DMG_STAGING, 'Applications'));
+      fs.copyFileSync(fixScriptPath, path.join(DMG_STAGING, 'Open First Time (Gatekeeper Fix).command'));
+      fs.chmodSync(path.join(DMG_STAGING, 'Open First Time (Gatekeeper Fix).command'), 0o755);
+      fs.copyFileSync(path.join(MAC_DIR, 'HOW TO INSTALL.txt'), path.join(DMG_STAGING, 'HOW TO INSTALL.txt'));
+
       try {
         if (fs.existsSync(macDmg)) fs.unlinkSync(macDmg);
         execFileSync('hdiutil', [
           'create',
-          '-volname', 'Swayam404-Installer',
-          '-srcfolder', MAC_DIR,
+          '-volname', 'Swayam404 Installer',
+          '-srcfolder', DMG_STAGING,
           '-ov',
           '-format', 'UDZO',
           macDmg,
@@ -164,6 +246,8 @@ All future updates will be applied automatically from GitHub or local releases w
         console.log(`🍏 macOS DMG created: ${macDmg}`);
       } catch (dmgErr) {
         console.warn('⚠️ Warning: Failed to create DMG disk image:', dmgErr.message);
+      } finally {
+        fs.rmSync(DMG_STAGING, { recursive: true, force: true });
       }
     }
   } else {

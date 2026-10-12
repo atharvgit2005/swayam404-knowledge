@@ -95,8 +95,16 @@ function runNpmScript(args, cwd = root) {
 
 export const userInstallDir = path.join(os.homedir(), 'Downloads', 'swayam404-extension');
 
+export function getDistPath() {
+  const localDist = path.join(__dirname, 'dist');
+  if (fs.existsSync(path.join(localDist, 'manifest.json'))) return localDist;
+  const parentDist = path.join(root, 'dist');
+  if (fs.existsSync(path.join(parentDist, 'manifest.json'))) return parentDist;
+  return localDist;
+}
+
 export function syncToUserInstallDir() {
-  const distPath = path.join(root, 'dist');
+  const distPath = getDistPath();
   if (fs.existsSync(path.join(distPath, 'manifest.json'))) {
     try {
       if (!fs.existsSync(userInstallDir)) {
@@ -113,7 +121,7 @@ export function getSystemStatus() {
   const isWindows = process.platform === 'win32';
   const isMac = process.platform === 'darwin';
 
-  const distPath = path.join(root, 'dist');
+  const distPath = getDistPath();
   let distManifest = null;
   if (fs.existsSync(path.join(distPath, 'manifest.json'))) {
     try {
@@ -552,7 +560,8 @@ export function createInstallerAppServer(options = {}) {
       }
 
       if (pathname === '/api/build' && req.method === 'POST') {
-        const distManifestPath = path.join(root, 'dist', 'manifest.json');
+        const distPath = getDistPath();
+        const distManifestPath = path.join(distPath, 'manifest.json');
         if (fs.existsSync(distManifestPath)) {
           syncToUserInstallDir();
           let distVersion = '1.1.0';

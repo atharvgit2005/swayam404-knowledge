@@ -1,19 +1,45 @@
 #!/bin/bash
 # Swayam404 macOS App Bundle Executable
-APP_DIR="$(cd "$(dirname "$0")/../../../../.." && pwd)"
+DIR="$(cd "$(dirname "$0")" && pwd)"
+APP_ROOT="$(cd "$DIR/.." && pwd)"
+
+# Find the bundled app resources
+if [ -d "$APP_ROOT/Resources/app" ]; then
+    APP_DIR="$APP_ROOT/Resources/app"
+elif [ -d "$DIR/../../../../installer-app" ]; then
+    APP_DIR="$(cd "$DIR/../../../../installer-app" && pwd)"
+else
+    APP_DIR="$(cd "$DIR/../../.." && pwd)"
+fi
+
 cd "$APP_DIR" || exit 1
 
 PORT=52410
 APP_URL="http://127.0.0.1:${PORT}"
 
-# Ensure node is in PATH (common locations)
-export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node 2>/dev/null | tail -n 1)/bin:$PATH"
+# Ensure node is in PATH (homebrew, nvm, standard paths)
+export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node 2>/dev/null | tail -n 1)/bin:$PATH"
+
+NODE_BIN="node"
+if ! command -v node &> /dev/null; then
+    if [ -x "/usr/local/bin/node" ]; then
+        NODE_BIN="/usr/local/bin/node"
+    elif [ -x "/opt/homebrew/bin/node" ]; then
+        NODE_BIN="/opt/homebrew/bin/node"
+    fi
+fi
 
 # Start backend server
-node installer-app/server.mjs &
+$NODE_BIN server.mjs &
 SERVER_PID=$!
 
-sleep 1
+# Wait briefly for server
+for i in {1..15}; do
+    if curl -s "http://127.0.0.1:${PORT}/api/status" > /dev/null 2>&1; then
+        break
+    fi
+    sleep 0.2
+done
 
 # Launch in native window or isolated app mode
 if [ -x "$DIR/native-window" ]; then
@@ -26,4 +52,5 @@ else
     open "$APP_URL"
 fi
 
-wait $SERVER_PID
+kill $SERVER_PID 2>/dev/null
+

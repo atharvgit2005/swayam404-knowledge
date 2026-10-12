@@ -24,6 +24,65 @@ const root = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(root, 'dist-installer');
 const MAC_DIR = path.join(OUT_DIR, 'mac');
 const WIN_DIR = path.join(OUT_DIR, 'windows');
+export function ensureDmgBackground() {
+  const bgPng = '/tmp/dmg_background.png';
+  try {
+    const svg = `<svg width="660" height="420" viewBox="0 0 660 420" xmlns="http://www.w3.org/2000/svg" style="background:#09090b; font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#0f172a" />
+          <stop offset="50%" stop-color="#0b0f19" />
+          <stop offset="100%" stop-color="#020617" />
+        </linearGradient>
+        <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#fbbf24" />
+          <stop offset="100%" stop-color="#f59e0b" />
+        </linearGradient>
+        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="8" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+      </defs>
+
+      <!-- Background -->
+      <rect width="660" height="420" fill="url(#bg)"/>
+      <!-- Top Gold Accent -->
+      <rect x="0" y="0" width="660" height="4" fill="url(#gold)"/>
+
+      <!-- Title & Subtitle -->
+      <text x="330" y="48" text-anchor="middle" fill="#ffffff" font-size="22" font-weight="800" letter-spacing="-0.5">Swayam404 Installer</text>
+      <text x="330" y="74" text-anchor="middle" fill="#94a3b8" font-size="13" font-weight="500">Drag Swayam404 into Applications to install</text>
+
+      <!-- Left Drop Target (App) -->
+      <rect x="95" y="145" width="130" height="150" rx="18" fill="#1e293b" fill-opacity="0.3" stroke="#334155" stroke-width="1.5" stroke-dasharray="5,5"/>
+      <text x="160" y="325" text-anchor="middle" fill="#64748b" font-size="11" font-weight="600">Swayam404</text>
+
+      <!-- Drag Arrow in Center -->
+      <g transform="translate(260, 205)" filter="url(#glow)">
+        <circle cx="70" cy="0" r="26" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+        <path d="M 58 -8 L 74 0 L 58 8" fill="none" stroke="#38bdf8" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="50" y1="0" x2="72" y2="0" stroke="#38bdf8" stroke-width="3.5" stroke-linecap="round"/>
+      </g>
+      <text x="330" y="248" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="700" letter-spacing="1.5">DRAG ➔</text>
+
+      <!-- Right Drop Target (Applications) -->
+      <rect x="435" y="145" width="130" height="150" rx="18" fill="#1e293b" fill-opacity="0.3" stroke="#334155" stroke-width="1.5" stroke-dasharray="5,5"/>
+      <text x="500" y="325" text-anchor="middle" fill="#64748b" font-size="11" font-weight="600">Applications</text>
+
+      <!-- Bottom Tip Banner -->
+      <rect x="40" y="360" width="580" height="40" rx="10" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <text x="60" y="384" fill="#fbbf24" font-size="14">💡</text>
+      <text x="85" y="384" fill="#94a3b8" font-size="11">First time? Open <tspan fill="#f8fafc" font-weight="600">Applications</tspan>, right-click <tspan fill="#f8fafc" font-weight="600">Swayam404</tspan> ➔ Open (or click "Open Anyway" in Settings).</text>
+    </svg>`;
+    const tmpSvg = '/tmp/swayam_dmg_bg.svg';
+    fs.writeFileSync(tmpSvg, svg);
+    execFileSync('qlmanage', ['-t', '-s', '660', '-o', '/tmp', tmpSvg]);
+    execFileSync('sips', ['-z', '420', '660', `${tmpSvg}.png`, '--out', bgPng]);
+  } catch (err) {
+    console.warn('Note: DMG background generation warning:', err.message);
+  }
+  return bgPng;
+}
 
 export function bundleInstallerPackages() {
   console.log('========================================================');
@@ -55,8 +114,8 @@ export function bundleInstallerPackages() {
   const macCommandSrc = path.join(installerAppDir, 'mac', 'Swayam404 Installer.command');
   const rootMacCommand = path.join(root, 'Swayam404-Installer-Mac.command');
 
-  // Copy dist extension folder for manual inspection / zip
-  fs.cpSync(distDir, path.join(MAC_DIR, 'dist'), { recursive: true });
+  // Extension is self-contained inside Swayam404 Installer.app/Contents/Resources/app/dist
+  // No loose dist folder in MAC_DIR root
 
   // Prepare self-contained Swayam404 Installer.app in MAC_DIR
   const macAppDest = path.join(MAC_DIR, 'Swayam404 Installer.app');
@@ -336,8 +395,8 @@ Because this is an open-source tool built by students:
   const winSrcDir = path.join(installerAppDir, 'windows');
   const rootWinBat = path.join(root, 'Swayam404-Installer-Windows.bat');
 
-  // Copy dist extension folder
-  fs.cpSync(distDir, path.join(WIN_DIR, 'dist'), { recursive: true });
+  // Extension is self-contained inside installer-app/dist for on-demand installation
+  fs.cpSync(distDir, path.join(WIN_DIR, 'installer-app', 'dist'), { recursive: true });
 
   if (fs.existsSync(winSrcDir)) {
     fs.cpSync(winSrcDir, path.join(WIN_DIR, 'windows-scripts'), { recursive: true });
@@ -390,36 +449,106 @@ All future updates will be applied automatically from GitHub or local releases w
       if (fs.existsSync(DMG_STAGING)) fs.rmSync(DMG_STAGING, { recursive: true, force: true });
       fs.mkdirSync(DMG_STAGING, { recursive: true });
 
-      // In DMG staging: copy app, symlink Applications, gatekeeper helper, visual guide, and readme
+      // In DMG staging: Only app, Applications symlink, .background, and Gatekeeper helper
       fs.cpSync(macAppDest, path.join(DMG_STAGING, 'Swayam404 Installer.app'), { recursive: true });
       fs.symlinkSync('/Applications', path.join(DMG_STAGING, 'Applications'));
       fs.copyFileSync(ifBlockedScriptPath, path.join(DMG_STAGING, '⚠️ IF BLOCKED BY APPLE - CLICK HERE.command'));
       fs.chmodSync(path.join(DMG_STAGING, '⚠️ IF BLOCKED BY APPLE - CLICK HERE.command'), 0o755);
-      fs.copyFileSync(oneClickScriptPath, path.join(DMG_STAGING, '🚀 1-Click Install to Applications.command'));
-      fs.chmodSync(path.join(DMG_STAGING, '🚀 1-Click Install to Applications.command'), 0o755);
-      fs.copyFileSync(fixScriptPath, path.join(DMG_STAGING, 'Open First Time (Gatekeeper Fix).command'));
-      fs.chmodSync(path.join(DMG_STAGING, 'Open First Time (Gatekeeper Fix).command'), 0o755);
-      if (fs.existsSync(visualGuidePng)) {
-        fs.copyFileSync(visualGuidePng, path.join(DMG_STAGING, '👀 STEP 2 - HOW TO APPROVE IN SETTINGS.png'));
+
+      // Embed background graphic into hidden .background directory
+      const bgDir = path.join(DMG_STAGING, '.background');
+      fs.mkdirSync(bgDir, { recursive: true });
+      const bgImg = ensureDmgBackground();
+      if (fs.existsSync(bgImg)) {
+        fs.copyFileSync(bgImg, path.join(bgDir, 'background.png'));
       }
-      fs.copyFileSync(path.join(MAC_DIR, 'HOW TO INSTALL.txt'), path.join(DMG_STAGING, 'HOW TO INSTALL.txt'));
-      fs.copyFileSync(path.join(MAC_DIR, 'README.txt'), path.join(DMG_STAGING, 'README.txt'));
+
+      const rwDmg = path.join(OUT_DIR, 'temp-rw.dmg');
+      if (fs.existsSync(rwDmg)) fs.unlinkSync(rwDmg);
+      if (fs.existsSync(macDmg)) fs.unlinkSync(macDmg);
+
+      const volName = 'Swayam404 Installer';
+      const mountPoint = `/Volumes/${volName}`;
 
       try {
-        if (fs.existsSync(macDmg)) fs.unlinkSync(macDmg);
+        // Ensure volume is not already mounted
+        try { execFileSync('hdiutil', ['detach', mountPoint, '-force'], { stdio: 'ignore' }); } catch {}
+
+        // 1. Create temporary read-write DMG
         execFileSync('hdiutil', [
           'create',
-          '-volname', 'Swayam404 Installer',
+          '-srcfolder', DMG_STAGING,
+          '-volname', volName,
+          '-fs', 'HFS+',
+          '-format', 'UDRW',
+          '-ov',
+          rwDmg,
+        ]);
+
+        // 2. Attach read-write DMG
+        execFileSync('hdiutil', ['attach', rwDmg, '-mountpoint', mountPoint, '-nobrowse']);
+
+        // 3. Configure Finder window view, bounds, background, and icon coordinates
+        const appleScript = `
+tell application "Finder"
+  tell disk "${volName}"
+    open
+    set current view of container window to icon view
+    set toolbar visible of container window to false
+    set statusbar visible of container window to false
+    set the bounds of container window to {400, 200, 1060, 620}
+    set theViewOptions to the icon view options of container window
+    set arrangement of theViewOptions to not arranged
+    set icon size of theViewOptions to 110
+    try
+      set background picture of theViewOptions to POSIX file "${mountPoint}/.background/background.png"
+    end try
+    set position of item "Swayam404 Installer.app" of container window to {160, 210}
+    set position of item "Applications" of container window to {500, 210}
+    try
+      set position of item "⚠️ IF BLOCKED BY APPLE - CLICK HERE.command" of container window to {330, 350}
+    end try
+    update without registering applications
+    delay 1
+    close
+  end tell
+end tell
+`;
+        try {
+          execFileSync('osascript', ['-e', appleScript], { timeout: 15000 });
+        } catch (asErr) {
+          console.warn('Note: Finder AppleScript positioning note:', asErr.message);
+        }
+
+        // 4. Detach read-write DMG
+        execFileSync('hdiutil', ['detach', mountPoint, '-force']);
+
+        // 5. Convert to compressed read-only UDZO image
+        execFileSync('hdiutil', [
+          'convert', rwDmg,
+          '-format', 'UDZO',
+          '-imagekey', 'zlib-level=9',
+          '-o', macDmg,
+          '-ov',
+        ]);
+        console.log(`🍏 macOS DMG created with native drag-to-Applications layout: ${macDmg}`);
+      } catch (dmgErr) {
+        console.warn('⚠️ Warning: Failed to create styled DMG, falling back to flat DMG:', dmgErr.message);
+        execFileSync('hdiutil', [
+          'create',
+          '-volname', volName,
           '-srcfolder', DMG_STAGING,
           '-ov',
           '-format', 'UDZO',
           macDmg,
         ]);
-        console.log(`🍏 macOS DMG created: ${macDmg}`);
-      } catch (dmgErr) {
-        console.warn('⚠️ Warning: Failed to create DMG disk image:', dmgErr.message);
       } finally {
-        fs.rmSync(DMG_STAGING, { recursive: true, force: true });
+        if (fs.existsSync(rwDmg)) {
+          try { fs.unlinkSync(rwDmg); } catch {}
+        }
+        if (fs.existsSync(DMG_STAGING)) {
+          try { fs.rmSync(DMG_STAGING, { recursive: true, force: true }); } catch {}
+        }
       }
     }
   } else {

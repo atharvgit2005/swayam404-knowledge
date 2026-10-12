@@ -526,10 +526,12 @@
       const latestVer = latestCheck?.latestVersion || s.latestRelease?.version;
       const hasUpdate = Boolean(latestCheck?.updateAvailable);
 
-      if (!s.distBuilt) {
+      const isInstalled = Boolean(s.userInstalled || s.installedVersion);
+
+      if (!isInstalled) {
         badge.textContent = 'READY TO INSTALL';
         badge.className = 'badge badge-ready';
-        desc.textContent = 'Extension not installed';
+        desc.textContent = 'Extension not yet unpacked. Click "Install Extension" below.';
         btnInstallText.textContent = 'Install Extension';
         btnUpdate.style.display = 'none';
       } else if (hasUpdate && latestVer) {
@@ -538,12 +540,12 @@
         desc.textContent = `Installed: v${installedVer || '1.0.0'} -> New: v${latestVer}`;
         btnUpdate.style.display = 'flex';
         btnUpdateText.textContent = `Update to v${latestVer} Now`;
-        btnInstallText.textContent = 'Re-Install / Rebuild';
+        btnInstallText.textContent = 'Re-Install / Update';
       } else {
         badge.textContent = `INSTALLED (v${installedVer || '1.0.0'})`;
         badge.className = 'badge badge-success';
-        desc.textContent = `Extension is ready (v${installedVer || '1.0.0'})`;
-        btnInstallText.textContent = 'Re-Install / Rebuild';
+        desc.textContent = `Extension unpacked in Downloads (v${installedVer || '1.0.0'})`;
+        btnInstallText.textContent = 'Re-Install / Update';
         // Only show update button when an update is available
         btnUpdate.style.display = 'none';
       }
@@ -663,7 +665,7 @@
       toast.textContent = 'Unpacking extension into Downloads/swayam404-extension...';
 
       try {
-        const res = await fetch('/api/build', { method: 'POST' });
+        const res = await fetch('/api/install', { method: 'POST' });
         const json = await res.json();
         if (json.success) {
           toast.textContent = 'Extension unpacked! Ready to load in Chrome.';
@@ -719,9 +721,15 @@
 
     async function openChromeExtensions() {
       try {
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText('chrome://extensions');
+        }
+      } catch (_) {}
+      try {
         await fetch('/api/browser/open-extensions', { method: 'POST' });
         const toast = document.getElementById('status-toast');
-        toast.textContent = 'Opened chrome://extensions in your default browser.';
+        toast.textContent = '🚀 Opening extensions panel in your browser! (chrome://extensions copied to clipboard)';
+        toast.style.borderColor = 'var(--yellow)';
       } catch (e) {
         window.open('chrome://extensions', '_blank');
       }

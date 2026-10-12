@@ -131,7 +131,16 @@ export function getSystemStatus() {
     }
   }
 
-  syncToUserInstallDir();
+  const userManifestPath = path.join(userInstallDir, 'manifest.json');
+  const userInstalled = fs.existsSync(userManifestPath);
+  let userManifest = null;
+  if (userInstalled) {
+    try {
+      userManifest = JSON.parse(fs.readFileSync(userManifestPath, 'utf8'));
+    } catch {
+      // ignore
+    }
+  }
 
   const releasesPath = path.join(root, 'local-releases');
   let latestRelease = null;
@@ -192,7 +201,9 @@ export function getSystemStatus() {
     installDir: userInstallDir,
     chromeExtensionPath: userInstallDir,
     distBuilt: fs.existsSync(distPath) && Boolean(distManifest),
-    installedVersion: distManifest?.version || null,
+    userInstalled,
+    installedVersion: userManifest?.version || null,
+    bundledVersion: distManifest?.version || '1.2.0',
     defaultRepo: 'atharvgit2005/swayam404-knowledge',
     updateServer: {
       status: updateServerStatus,
@@ -272,12 +283,34 @@ export function openExtensionsPage() {
   const isWindows = process.platform === 'win32';
 
   if (isMac) {
-    // Try Brave then Chrome then default open
-    exec('open -a "Brave Browser" "brave://extensions" || open -a "Google Chrome" "chrome://extensions" || open "chrome://extensions"');
+    const cmd = `
+      if pgrep -x "Google Chrome" > /dev/null 2>&1; then
+        open -a "Google Chrome" "chrome://extensions"
+      elif pgrep -x "Brave Browser" > /dev/null 2>&1; then
+        open -a "Brave Browser" "brave://extensions"
+      elif pgrep -i "msedge" > /dev/null 2>&1; then
+        open -a "Microsoft Edge" "edge://extensions"
+      elif pgrep -i "arc" > /dev/null 2>&1; then
+        open -a "Arc" "arc://extensions"
+      elif [ -d "/Applications/Google Chrome.app" ]; then
+        open -a "Google Chrome" "chrome://extensions"
+      elif [ -d "/Applications/Brave Browser.app" ]; then
+        open -a "Brave Browser" "brave://extensions"
+      elif [ -d "/Applications/Microsoft Edge.app" ]; then
+        open -a "Microsoft Edge" "edge://extensions"
+      elif [ -d "/Applications/Arc.app" ]; then
+        open -a "Arc" "arc://extensions"
+      else
+        open -a "Google Chrome" "chrome://extensions" 2>/dev/null
+      fi
+    `;
+    exec(cmd, (err) => {
+      if (err) console.warn('Note on openExtensionsPage:', err.message);
+    });
   } else if (isWindows) {
-    exec('start brave brave://extensions || start chrome chrome://extensions || start msedge edge://extensions');
+    exec('start chrome chrome://extensions || start brave brave://extensions || start msedge edge://extensions');
   } else {
-    exec('xdg-open chrome://extensions');
+    exec('google-chrome chrome://extensions || brave-browser brave://extensions || xdg-open chrome://extensions');
   }
 }
 
@@ -559,7 +592,7 @@ export function createInstallerAppServer(options = {}) {
         }
       }
 
-      if (pathname === '/api/build' && req.method === 'POST') {
+      if ((pathname === '/api/install' || pathname === '/api/build') && req.method === 'POST') {
         const distPath = getDistPath();
         const distManifestPath = path.join(distPath, 'manifest.json');
         if (fs.existsSync(distManifestPath)) {

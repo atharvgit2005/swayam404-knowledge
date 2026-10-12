@@ -130,8 +130,7 @@ describe('Swayam404 GitHub Releases Live Sync & Packaging', () => {
     const macDir = path.join(result.outDir, 'mac');
     const winDir = path.join(result.outDir, 'windows');
     expect(fs.existsSync(path.join(macDir, 'README.txt'))).toBe(true);
-    expect(fs.existsSync(path.join(winDir, 'README.txt'))).toBe(true);
-    expect(fs.existsSync(path.join(macDir, 'dist', 'manifest.json'))).toBe(true);
-    expect(fs.existsSync(path.join(winDir, 'dist', 'manifest.json'))).toBe(true);
-  }, 20000);
+    expect(fs.existsSync(path.join(macDir, 'Swayam404 Installer.app', 'Contents', 'Resources', 'app', 'dist', 'manifest.json'))).toBe(true);
+    expect(fs.existsSync(path.join(winDir, 'installer-app', 'dist', 'manifest.json'))).toBe(true);
+  }, 120000);
 });

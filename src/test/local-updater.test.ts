@@ -415,10 +415,10 @@ describe('Local Extension Updater Prototype (Scenarios A through J)', () => {
     // local-releases/*.zip must be ignored
     expect(gitignoreContent).toContain('local-releases/*.zip');
 
-    // Manifest in public must have version 1.0.0
+    // Manifest in public must have valid version matching package.json
     const manifestPath = path.join(root, 'public/manifest.json');
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    expect(manifest.version).toBe('1.0.0');
+    expect(manifest.version).toBe(JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version);
 
     // Production manifest must not contain remote code execution permissions
     expect(manifest.content_security_policy).toBeUndefined(); // MV3 defaults to strict script-src 'self'

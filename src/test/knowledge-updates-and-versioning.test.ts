@@ -488,8 +488,8 @@ describe('Swayam404 Update Architecture & Versioning Suite', () => {
     const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../public/manifest.json'), 'utf8'));
 
     // Both reflect unified application version policy
-    expect(pkg.version).toBe('1.0.0');
-    expect(manifest.version).toBe('1.0.0');
+    expect(pkg.version).toBeDefined();
+    expect(manifest.version).toBe(pkg.version);
 
     // Remote dataset updates to version 9.9.9
     const futuristicManifest: KnowledgeManifest = {
@@ -508,9 +508,8 @@ describe('Swayam404 Update Architecture & Versioning Suite', () => {
     const meta = await KnowledgeCacheService.getCachedMetadata();
     expect(meta?.datasetVersion).toBe('9.9.9');
 
-    // Extension runtime code version remains strictly unchanged at 1.0.0!
-    expect(pkg.version).toBe('1.0.0');
-    expect(manifest.version).toBe('1.0.0');
+    // Extension runtime code version remains strictly unchanged by dataset sync
+    expect(pkg.version).toBe(manifest.version);
   });
 
   // --------------------------------------------------------------------------

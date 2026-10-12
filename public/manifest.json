@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "swayam404 — SWAYAM Assignment Assistant",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Smart, student-controlled assignment assistant for SWAYAM courses. Review, verify, and populate approved answers with zero auto-submission.",
   "permissions": [
     "activeTab",

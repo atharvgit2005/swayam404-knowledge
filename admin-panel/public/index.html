@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>swayam404 — Admin Telemetry & Browser Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root {
+      --bg: #070d18;
+      --card-bg: #111a2e;
+      --card-border: #000000;
+      --yellow: #ffcc00;
+      --yellow-hover: #e6b800;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --green: #22c55e;
+      --blue: #38bdf8;
+      --red: #ef4444;
+      --black: #000000;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1, h2, h3, .brand-title {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1080px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Neo-Brutalist Card Base */
+    .brutal-card {
+      background: var(--card-bg);
+      border: 3px solid var(--black);
+      box-shadow: 5px 5px 0px var(--black);
+      padding: 20px;
+    }
+
+    /* Header */
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      background: var(--card-bg);
+      border: 3px solid var(--black);
+      box-shadow: 6px 6px 0px var(--black);
+      padding: 16px 24px;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-logo-box {
+      background: var(--yellow);
+      color: var(--black);
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 900;
+      font-size: 20px;
+      padding: 8px 12px;
+      border: 3px solid var(--black);
+      box-shadow: 3px 3px 0px var(--black);
+      line-height: 1;
+    }
+
+    .brand-name {
+      font-size: 20px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: -0.5px;
+    }
+
+    .badge-admin {
+      background: var(--yellow);
+      color: var(--black);
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 8px;
+      border: 2px solid var(--black);
+      text-transform: uppercase;
+      margin-left: 8px;
+    }
+
+    .auth-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Buttons */
+    .btn-brutal {
+      background: var(--yellow);
+      color: var(--black);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 8px 16px;
+      border: 2.5px solid var(--black);
+      box-shadow: 3px 3px 0px var(--black);
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.1s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+
+    .btn-brutal:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 4px 4px 0px var(--black);
+    }
+
+    .btn-brutal:active {
+      transform: translate(1px, 1px);
+      box-shadow: 2px 2px 0px var(--black);
+    }
+
+    .btn-secondary {
+      background: #1e293b;
+      color: var(--text);
+    }
+
+    .btn-danger {
+      background: var(--red);
+      color: #fff;
+    }
+
+    /* Auth Banner */
+    .auth-banner {
+      background: #1e293b;
+      border-left: 6px solid var(--yellow);
+      padding: 12px 18px;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .kpi-card {
+      background: var(--card-bg);
+      border: 3px solid var(--black);
+      box-shadow: 4px 4px 0px var(--black);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .kpi-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .kpi-value {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 34px;
+      font-weight: 900;
+      color: var(--text);
+      line-height: 1.1;
+    }
+
+    .kpi-highlight {
+      color: var(--yellow);
+    }
+
+    .kpi-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Grid 2 Columns */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Meters */
+    .meter-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .meter-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .meter-track {
+      background: #0f172a;
+      height: 10px;
+      border: 1.5px solid var(--black);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .meter-fill {
+      height: 100%;
+      background: var(--yellow);
+      transition: width 0.3s ease;
+    }
+
+    .meter-fill-blue { background: var(--blue); }
+    .meter-fill-green { background: var(--green); }
+
+    /* Feed Table */
+    .feed-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .feed-table th {
+      text-align: left;
+      padding: 8px 10px;
+      background: #0b1120;
+      border-bottom: 2px solid var(--black);
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .feed-table td {
+      padding: 10px;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid var(--black);
+      text-transform: uppercase;
+    }
+
+    .tag-chrome { background: #3b82f6; color: #fff; }
+    .tag-brave { background: #ea580c; color: #fff; }
+    .tag-edge { background: #0284c7; color: #fff; }
+    .tag-mac { background: #e2e8f0; color: #000; }
+    .tag-win { background: #0284c7; color: #fff; }
+    .tag-linux { background: #eab308; color: #000; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 100;
+    }
+
+    .modal-box {
+      background: var(--card-bg);
+      border: 4px solid var(--black);
+      box-shadow: 8px 8px 0px var(--black);
+      padding: 28px;
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header class="header-bar">
+      <div class="brand-wrap">
+        <div class="brand-logo-box">404</div>
+        <div>
+          <span class="brand-name">swayam404</span>
+          <span class="badge-admin">Admin Telemetry</span>
+        </div>
+      </div>
+
+      <div class="auth-controls" id="auth-controls">
+        <button class="btn-brutal btn-secondary" onclick="simulateTestPing()">
+          ⚡ Simulate Ping
+        </button>
+        <div id="user-display" style="display: none; align-items: center; gap: 8px;">
+          <span id="user-name" style="font-size: 12px; font-weight: 700;">Admin</span>
+          <button class="btn-brutal btn-danger" onclick="handleLogout()" style="padding: 6px 10px; font-size: 11px;">Logout</button>
+        </div>
+        <button class="btn-brutal" id="btn-login-trigger" onclick="openLoginModal()">Sign In</button>
+      </div>
+    </header>
+
+    <!-- Google Auth Status Banner -->
+    <div class="auth-banner" id="auth-banner">
+      <div>
+        <strong>🔒 Google Auth Gate:</strong> 
+        <span id="google-status-text">Dev Preview Mode Active (Google Client ID not yet set)</span>
+      </div>
+      <div>
+        <button class="btn-brutal btn-secondary" onclick="openSetupGuide()" style="padding: 4px 10px; font-size: 11px;">
+          ⚙️ Setup Guide
+        </button>
+      </div>
+    </div>
+
+    <!-- Live KPI Summary -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-title">🌐 Total Active Browsers</div>
+        <div class="kpi-value kpi-highlight" id="kpi-total">0</div>
+        <div class="kpi-sub">Unique installations recorded</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-title">⚡ Active (Last 24 Hours)</div>
+        <div class="kpi-value" id="kpi-24h" style="color: var(--green);">0</div>
+        <div class="kpi-sub">Browsers seen today</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-title">📅 Active (Last 7 Days)</div>
+        <div class="kpi-value" id="kpi-7d" style="color: var(--blue);">0</div>
+        <div class="kpi-sub">Weekly active student installs</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-title">📦 v1.1.0 Adoption</div>
+        <div class="kpi-value" id="kpi-adoption" style="color: var(--yellow);">100%</div>
+        <div class="kpi-sub">Running latest extension release</div>
+      </div>
+    </div>
+
+    <!-- Analytics Breakdowns -->
+    <div class="dashboard-grid">
+      <!-- Browser Distribution -->
+      <div class="brutal-card">
+        <h3 style="margin-bottom: 14px; font-size: 16px; text-transform: uppercase;">🌐 Browser Distribution</h3>
+        <div id="browser-meters">
+          <!-- Meters populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Operating System Share -->
+      <div class="brutal-card">
+        <h3 style="margin-bottom: 14px; font-size: 16px; text-transform: uppercase;">💻 Operating Systems</h3>
+        <div id="platform-meters">
+          <!-- Meters populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Heartbeat Stream -->
+    <div class="brutal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h3 style="font-size: 16px; text-transform: uppercase;">📡 Real-Time Browser Heartbeat Stream</h3>
+        <span style="font-size: 11px; color: var(--text-muted); font-weight: 700;">Auto-refreshes every 5s</span>
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table class="feed-table">
+          <thead>
+            <tr>
+              <th>Client UUID</th>
+              <th>Browser</th>
+              <th>Operating System</th>
+              <th>Extension Version</th>
+              <th>Event</th>
+              <th>Last Seen</th>
+            </tr>
+          </thead>
+          <tbody id="feed-tbody">
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                No incoming heartbeats yet. Click "⚡ Simulate Ping" above to test.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login Modal -->
+  <div class="modal-overlay" id="login-modal" style="display: none;">
+    <div class="modal-box">
+      <h2 style="font-size: 20px; text-transform: uppercase;">Admin Portal Access</h2>
+      <p style="font-size: 13px; color: var(--text-muted);">
+        Sign in to view real-time browser analytics and telemetry data for Swayam404.
+      </p>
+
+      <!-- Google Sign In Container -->
+      <div id="google-btn-wrapper" style="margin: 8px 0; min-height: 44px; display: flex; justify-content: center;"></div>
+
+      <div style="display: flex; align-items: center; gap: 8px; margin: 4px 0;">
+        <hr style="flex: 1; border: 1px solid #334155;">
+        <span style="font-size: 11px; color: var(--text-muted); font-weight: 800;">OR</span>
+        <hr style="flex: 1; border: 1px solid #334155;">
+      </div>
+
+      <button class="btn-brutal" onclick="handleDevLogin()">
+        🚀 Enter via Dev Preview Bypass
+      </button>
+
+      <button class="btn-brutal btn-secondary" onclick="closeLoginModal()" style="margin-top: 4px;">
+        Close
+      </button>
+    </div>
+  </div>
+
+  <!-- Setup Guide Modal -->
+  <div class="modal-overlay" id="setup-modal" style="display: none;">
+    <div class="modal-box" style="max-width: 560px;">
+      <h2 style="font-size: 20px; text-transform: uppercase;">⚙️ Google Auth Setup Guide</h2>
+      <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">
+        To secure this admin panel with your personal Google Account:
+      </p>
+
+      <ol style="font-size: 12px; margin-left: 20px; display: flex; flex-direction: column; gap: 8px; color: #cbd5e1;">
+        <li>Go to <strong>Google Cloud Console</strong> → Create Project or select existing.</li>
+        <li>Navigate to <strong>APIs & Services</strong> → <strong>Credentials</strong>.</li>
+        <li>Click <strong>Create Credentials</strong> → <strong>OAuth client ID</strong> (Web application).</li>
+        <li>Add Authorized JavaScript Origin: <code>http://localhost:52420</code>.</li>
+        <li>Copy your <strong>Client ID</strong> and set it in your environment:
+          <pre style="background: #000; padding: 6px; margin-top: 4px; border: 1px solid #334155; color: var(--yellow);">export GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"</pre>
+        </li>
+      </ol>
+
+      <button class="btn-brutal" onclick="closeSetupGuide()">Got It</button>
+    </div>
+  </div>
+
+  <script>
+    let isAuthenticated = false;
+    let currentUser = null;
+
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/admin/stats', {
+          headers: {
+            'X-Dev-Bypass': 'true' // Allow dev preview
+          }
+        });
+        if (!res.ok) {
+          if (res.status === 401) {
+            updateAuthUI(false, null);
+          }
+          return;
+        }
+
+        const data = await res.json();
+        if (data.success && data.stats) {
+          renderDashboard(data.stats);
+          if (data.sessionUser) {
+            updateAuthUI(true, data.sessionUser);
+          }
+        }
+      } catch (err) {
+        console.warn('Error loading admin stats:', err);
+      }
+    }
+
+    function renderDashboard(stats) {
+      document.getElementById('kpi-total').textContent = stats.totalBrowsers || 0;
+      document.getElementById('kpi-24h').textContent = stats.active24h || 0;
+      document.getElementById('kpi-7d').textContent = stats.active7d || 0;
+
+      // Calculate v1.1.0 adoption rate
+      const v110Count = stats.versionBreakdown?.['1.1.0'] || 0;
+      const total = stats.totalBrowsers || 1;
+      const rate = total > 0 ? Math.round((v110Count / total) * 100) : 100;
+      document.getElementById('kpi-adoption').textContent = `${rate}%`;
+
+      // Render Browser Meters
+      const bContainer = document.getElementById('browser-meters');
+      bContainer.innerHTML = '';
+      const bCounts = stats.browserBreakdown || {};
+      for (const [name, count] of Object.entries(bCounts)) {
+        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+        const row = document.createElement('div');
+        row.className = 'meter-row';
+        row.innerHTML = `
+          <div class="meter-label-row">
+            <span>${name}</span>
+            <span>${count} (${pct}%)</span>
+          </div>
+          <div class="meter-track">
+            <div class="meter-fill" style="width: ${pct}%;"></div>
+          </div>
+        `;
+        bContainer.appendChild(row);
+      }
+
+      // Render Platform Meters
+      const pContainer = document.getElementById('platform-meters');
+      pContainer.innerHTML = '';
+      const pCounts = stats.platformBreakdown || {};
+      for (const [name, count] of Object.entries(pCounts)) {
+        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+        const displayName = name === 'mac' ? 'macOS' : name === 'windows' ? 'Windows' : name === 'linux' ? 'Linux' : 'Other';
+        const row = document.createElement('div');
+        row.className = 'meter-row';
+        row.innerHTML = `
+          <div class="meter-label-row">
+            <span>${displayName}</span>
+            <span>${count} (${pct}%)</span>
+          </div>
+          <div class="meter-track">
+            <div class="meter-fill meter-fill-blue" style="width: ${pct}%;"></div>
+          </div>
+        `;
+        pContainer.appendChild(row);
+      }
+
+      // Render Feed Table
+      const tbody = document.getElementById('feed-tbody');
+      if (stats.recentPings && stats.recentPings.length > 0) {
+        tbody.innerHTML = '';
+        for (const p of stats.recentPings) {
+          const tr = document.createElement('tr');
+          const relTime = formatRelativeTime(p.timestamp);
+          const bClass = p.browser === 'Brave' ? 'tag-brave' : p.browser === 'Edge' ? 'tag-edge' : 'tag-chrome';
+          const pClass = p.platform === 'mac' ? 'tag-mac' : p.platform === 'windows' ? 'tag-win' : 'tag-linux';
+
+          tr.innerHTML = `
+            <td><code>${p.clientId}</code></td>
+            <td><span class="tag ${bClass}">${p.browser}</span></td>
+            <td><span class="tag ${pClass}">${p.platform}</span></td>
+            <td><strong>v${p.version}</strong></td>
+            <td><span style="color: var(--yellow); font-weight: 700;">${p.event}</span></td>
+            <td>${relTime}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      }
+    }
+
+    function formatRelativeTime(iso) {
+      if (!iso) return 'Just now';
+      const sec = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+      if (sec < 5) return 'Just now';
+      if (sec < 60) return `${sec}s ago`;
+      if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
+      return `${Math.floor(sec / 3600)}h ago`;
+    }
+
+    async function simulateTestPing() {
+      try {
+        await fetch('/api/telemetry/simulate', { method: 'POST' });
+        await loadStats();
+      } catch (err) {
+        alert('Simulation error: ' + err.message);
+      }
+    }
+
+    function updateAuthUI(isAuth, user) {
+      isAuthenticated = isAuth;
+      currentUser = user;
+      const trigger = document.getElementById('btn-login-trigger');
+      const userDisplay = document.getElementById('user-display');
+      const userName = document.getElementById('user-name');
+
+      if (isAuth && user) {
+        trigger.style.display = 'none';
+        userDisplay.style.display = 'flex';
+        userName.textContent = user.name || user.email || 'Admin';
+      } else {
+        trigger.style.display = 'inline-flex';
+        userDisplay.style.display = 'none';
+      }
+    }
+
+    async function handleDevLogin() {
+      try {
+        const res = await fetch('/api/admin/auth/dev-login', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          closeLoginModal();
+          updateAuthUI(true, data.user);
+          await loadStats();
+        }
+      } catch (e) {
+        alert('Login failed: ' + e.message);
+      }
+    }
+
+    async function handleLogout() {
+      try {
+        await fetch('/api/admin/auth/logout', { method: 'POST' });
+        updateAuthUI(false, null);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    function openLoginModal() { document.getElementById('login-modal').style.display = 'flex'; }
+    function closeLoginModal() { document.getElementById('login-modal').style.display = 'none'; }
+    function openSetupGuide() { document.getElementById('setup-modal').style.display = 'flex'; }
+    function closeSetupGuide() { document.getElementById('setup-modal').style.display = 'none'; }
+
+    // Init
+    loadStats();
+    setInterval(loadStats, 5000);
+  </script>
+</body>
+</html>

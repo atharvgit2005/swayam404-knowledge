@@ -15,6 +15,8 @@
     "update:rollback": "node scripts/apply-local-update.mjs --rollback",
     "installer": "node installer-app/server.mjs",
     "installer:open": "node installer-app/server.mjs --open",
+    "admin": "node admin-panel/server.mjs",
+    "admin:open": "node admin-panel/server.mjs --open",
     "package:installer": "node scripts/bundle-installer.mjs",
     "app": "electron installer-app/electron-main.cjs",
     "test:updater": "vitest run src/test/local-updater.test.ts",

@@ -28,6 +28,56 @@ async function checkKnowledgeUpdatesSafe(): Promise<void> {
   }
 }
 
+/**
+ * Anonymous browser heartbeat telemetry.
+ * Strictly anonymous: zero personal information, zero SWAYAM data, zero student details.
+ * Purpose: Track active installation count and browser distribution for admin panel.
+ */
+async function sendTelemetryHeartbeat(event: 'install' | 'startup' | 'heartbeat' = 'heartbeat'): Promise<void> {
+  try {
+    let clientId: string = '';
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      const stored = await chrome.storage.local.get(['swayam_telemetry_client_id']);
+      clientId = stored.swayam_telemetry_client_id;
+      if (!clientId) {
+        clientId = 'c_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+        await chrome.storage.local.set({ swayam_telemetry_client_id: clientId });
+      }
+    }
+
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    let browser = 'Chrome';
+    if (ua.includes('Brave')) browser = 'Brave';
+    else if (ua.includes('Edg/')) browser = 'Edge';
+    else if (ua.includes('Arc/')) browser = 'Arc';
+
+    let platform = 'other';
+    if (ua.includes('Macintosh') || ua.includes('Mac OS')) platform = 'mac';
+    else if (ua.includes('Windows')) platform = 'windows';
+    else if (ua.includes('Linux')) platform = 'linux';
+
+    const payload = {
+      clientId: clientId || 'c_anon',
+      browser,
+      platform,
+      version: '1.1.0',
+      event,
+      timestamp: new Date().toISOString(),
+    };
+
+    // Send heartbeat to local admin server (or configured telemetry backend)
+    await fetch('http://127.0.0.1:52420/api/telemetry/ping', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(() => {
+      // Non-blocking fail-silent: extension functions 100% normally if admin panel is offline
+    });
+  } catch {
+    // Fail silent
+  }
+}
+
 chrome.runtime.onInstalled.addListener(async (details) => {
   console.log('[swayam404] Extension installed/updated, reason:', details.reason);
   try {
@@ -42,8 +92,9 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       });
     }
 
-    // Trigger initial safe check
+    // Trigger initial safe check and telemetry heartbeat
     await checkKnowledgeUpdatesSafe();
+    await sendTelemetryHeartbeat('install');
   } catch (err) {
     console.error('[swayam404] Error initializing defaults on install:', err);
   }
@@ -52,6 +103,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 if (chrome.runtime?.onStartup) {
   chrome.runtime.onStartup.addListener(async () => {
     await checkKnowledgeUpdatesSafe();
+    await sendTelemetryHeartbeat('startup');
   });
 }
 
@@ -59,6 +111,7 @@ if (chrome.alarms?.onAlarm) {
   chrome.alarms.onAlarm.addListener(async (alarm) => {
     if (alarm.name === 'swayam404_knowledge_check') {
       await checkKnowledgeUpdatesSafe();
+      await sendTelemetryHeartbeat('heartbeat');
     }
   });
 }

@@ -72,13 +72,25 @@ export function bundleInstallerPackages() {
   fs.cpSync(path.join(installerAppDir, 'lib'), path.join(appResourcesDir, 'lib'), { recursive: true });
   fs.cpSync(distDir, path.join(appResourcesDir, 'dist'), { recursive: true });
 
-  // Compile Swift native window if swiftc is available
+  // Compile Swift universal Mach-O binary if swiftc is available
   try {
     const swiftSrc = path.join(installerAppDir, 'mac', 'tray-app.swift');
-    const binTarget = path.join(macAppDest, 'Contents', 'MacOS', 'native-window');
+    const macBinTarget = path.join(macAppDest, 'Contents', 'MacOS', 'Swayam404 Installer');
+    const fallbackTarget = path.join(macAppDest, 'Contents', 'MacOS', 'native-window');
     if (fs.existsSync(swiftSrc) && process.platform === 'darwin') {
-      execFileSync('swiftc', ['-O', '-o', binTarget, swiftSrc]);
-      fs.chmodSync(binTarget, 0o755);
+      const tmpArm64 = '/tmp/swayam-arm64';
+      const tmpX86 = '/tmp/swayam-x86_64';
+      try {
+        execFileSync('swiftc', ['-target', 'arm64-apple-macos11.0', '-O', '-o', tmpArm64, swiftSrc]);
+        execFileSync('swiftc', ['-target', 'x86_64-apple-macos11.0', '-O', '-o', tmpX86, swiftSrc]);
+        execFileSync('lipo', ['-create', '-output', macBinTarget, tmpArm64, tmpX86]);
+      } catch {
+        // Fallback to native architecture if cross-compilation fails
+        execFileSync('swiftc', ['-O', '-o', macBinTarget, swiftSrc]);
+      }
+      fs.copyFileSync(macBinTarget, fallbackTarget);
+      fs.chmodSync(macBinTarget, 0o755);
+      fs.chmodSync(fallbackTarget, 0o755);
     }
   } catch (swiftErr) {
     console.warn('Note: Using fallback browser window launcher:', swiftErr.message);
@@ -88,6 +100,17 @@ export function bundleInstallerPackages() {
   const launcherPath = path.join(macAppDest, 'Contents', 'MacOS', 'launcher');
   if (fs.existsSync(launcherPath)) {
     fs.chmodSync(launcherPath, 0o755);
+  }
+
+  // Ensure Info.plist specifies Swayam404 Installer as CFBundleExecutable
+  const plistPath = path.join(macAppDest, 'Contents', 'Info.plist');
+  if (fs.existsSync(plistPath)) {
+    let plistContent = fs.readFileSync(plistPath, 'utf8');
+    plistContent = plistContent.replace(
+      /<key>CFBundleExecutable<\/key>\s*<string>[^<]+<\/string>/,
+      '<key>CFBundleExecutable</key>\n    <string>Swayam404 Installer</string>'
+    );
+    fs.writeFileSync(plistPath, plistContent);
   }
 
   // Ad-hoc codesign the application bundle on macOS
@@ -109,30 +132,36 @@ export function bundleInstallerPackages() {
     fs.chmodSync(path.join(MAC_DIR, 'Start-Installer.command'), 0o755);
   }
 
-  // 1-Click Gatekeeper Helper Script
+  // 1-Click Install & Gatekeeper Helper Script
   const gatekeeperFixScript = `#!/bin/bash
 DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_NAME="Swayam404 Installer.app"
+APP_SRC="$DIR/Swayam404 Installer.app"
+APP_DEST="/Applications/Swayam404 Installer.app"
 
 echo "========================================================"
-echo "⚡ Swayam404 macOS Gatekeeper Security Helper"
+echo "⚡ Swayam404 Automatic 1-Click Installer"
 echo "========================================================"
-echo "Clearing macOS quarantine attribute..."
+echo "1. Installing Swayam404 to /Applications..."
+rm -rf "$APP_DEST" 2>/dev/null
+cp -R "$APP_SRC" "/Applications/"
 
-xattr -d com.apple.quarantine "$DIR/$APP_NAME" 2>/dev/null || xattr -cr "$DIR/$APP_NAME" 2>/dev/null
-xattr -d com.apple.quarantine "/Applications/$APP_NAME" 2>/dev/null || xattr -cr "/Applications/$APP_NAME" 2>/dev/null
+echo "2. Authorizing application with macOS Security..."
+xattr -cr "$APP_DEST" 2>/dev/null || true
 
-echo "✅ Quarantine cleared! Launching Swayam404 Installer..."
-if [ -d "/Applications/$APP_NAME" ]; then
-    open "/Applications/$APP_NAME"
-else
-    open "$DIR/$APP_NAME"
-fi
+echo "3. Launching Swayam404 Installer..."
+open "$APP_DEST"
+echo "========================================================"
+echo "🎉 Installation complete! Dashboard window opened."
+echo "========================================================"
 exit 0
 `;
   const fixScriptPath = path.join(MAC_DIR, 'Open First Time (Gatekeeper Fix).command');
   fs.writeFileSync(fixScriptPath, gatekeeperFixScript);
   fs.chmodSync(fixScriptPath, 0o755);
+
+  const oneClickScriptPath = path.join(MAC_DIR, '🚀 1-Click Install to Applications.command');
+  fs.writeFileSync(oneClickScriptPath, gatekeeperFixScript);
+  fs.chmodSync(oneClickScriptPath, 0o755);
 
   // Add macOS README
   const macReadme = `# Swayam404 Desktop Installer (macOS)
@@ -140,27 +169,22 @@ exit 0
 ============================================================
 HOW TO INSTALL:
 ============================================================
-1. Drag "Swayam404 Installer" into the "Applications" folder.
-2. Open "Applications" and double-click "Swayam404 Installer".
+OPTION 1 (Easiest — 1-Click):
+• Double-click "🚀 1-Click Install to Applications.command"
+  (or "Open First Time (Gatekeeper Fix).command")!
+  It will automatically copy the app to /Applications and launch it.
+
+OPTION 2 (Standard macOS Drag & Drop):
+1. Drag "Swayam404 Installer" into the "Applications" folder right next to it.
+2. Open your "Applications" folder and double-click "Swayam404 Installer".
 
 ============================================================
 IF macOS BLOCKS WITH "Apple could not verify..."
 ============================================================
-Because this is an open-source tool built by students without a $99/yr Apple certificate,
-macOS Gatekeeper protects your Mac. Choose ANY of these 3 easy ways:
-
-OPTION A (Fastest 1-Click):
-• Double-click "Open First Time (Gatekeeper Fix).command" in this window!
-
-OPTION B (Standard macOS Right-Click):
-• Right-click (or Control-click) "Swayam404 Installer"
-• Click "Open"
-• Click "Open" in the prompt.
-
-OPTION C (System Settings):
-• Open System Settings > Privacy & Security
-• Scroll down to the "Security" section
-• Click "Open Anyway" next to Swayam404 Installer!
+Because this is an open-source tool built by students:
+• Method A: Double-click "Open First Time (Gatekeeper Fix).command"
+• Method B: Right-click (or Control-click) Swayam404 Installer ➔ Open ➔ Click "Open"
+• Method C: Open System Settings > Privacy & Security > scroll to "Security" > Click "Open Anyway"
 ============================================================
 `;
   fs.writeFileSync(path.join(MAC_DIR, 'HOW TO INSTALL.txt'), macReadme);

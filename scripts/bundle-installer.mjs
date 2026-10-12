@@ -172,30 +172,39 @@ APP_DEST="/Applications/Swayam404 Installer.app"
 echo "========================================================"
 echo "⚡ Swayam404 — macOS Security Guide & Auto-Approval"
 echo "========================================================"
-echo ""
+
+# 1. Pop up native GUI dialog guiding user to Privacy Settings
+osascript -e '
+set theResult to button returned of (display dialog "⚠️ Apple Security Verification
+
+Apple requires a 1-time approval for open-source apps.
+
+1. System Settings is opening now.
+2. Scroll down to the \\"Security\\" section.
+3. Click the \\"Open Anyway\\" button next to Swayam404 Installer.
+4. Click \\"Open\\" on the confirmation dialog to launch!" with title "Swayam404 — Permission Guide" buttons {"Cancel", "Open Privacy Settings"} default button "Open Privacy Settings" with icon caution)
+if theResult is "Open Privacy Settings" then
+    tell application "System Settings" to activate
+    do shell script "open x-apple.systempreferences:com.apple.preference.security"
+end if
+' 2>/dev/null &
+
+# 2. Open System Settings directly
+open "x-apple.systempreferences:com.apple.preference.security" 2>/dev/null
+
+# 3. Installing Swayam404 into /Applications
 echo "1. Installing Swayam404 into /Applications..."
 if [ -d "$APP_SRC" ]; then
     rm -rf "$APP_DEST" 2>/dev/null
     cp -R "$APP_SRC" "/Applications/" 2>/dev/null
 fi
 
+# 4. Clearing Gatekeeper quarantine restrictions
 echo "2. Clearing Gatekeeper quarantine restrictions..."
 xattr -cr "$APP_DEST" 2>/dev/null || true
 
-echo "3. Opening System Settings to Privacy & Security..."
-open "x-apple.systempreferences:com.apple.preference.security"
-
-echo ""
-echo "========================================================"
-echo "👉 WHAT TO DO IN SYSTEM SETTINGS (Right Now):"
-echo "========================================================"
-echo "1. The System Settings window is now open on your screen."
-echo "2. Scroll down to the 'Security' section."
-echo "3. Click the 'Open Anyway' button next to Swayam404 Installer."
-echo "4. When prompted, click 'Open'!"
-echo "========================================================"
-echo ""
-echo "Launching Swayam404 Installer..."
+# 5. Launching Swayam404 Installer
+echo "3. Launching Swayam404 Installer..."
 sleep 1
 open "$APP_DEST" 2>/dev/null || true
 exit 0

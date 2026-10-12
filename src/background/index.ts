@@ -65,14 +65,26 @@ async function sendTelemetryHeartbeat(event: 'install' | 'startup' | 'heartbeat'
       timestamp: new Date().toISOString(),
     };
 
-    // Send heartbeat to local admin server (or configured telemetry backend)
-    await fetch('http://127.0.0.1:52420/api/telemetry/ping', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }).catch(() => {
-      // Non-blocking fail-silent: extension functions 100% normally if admin panel is offline
-    });
+    // Send heartbeat to public deployed admin cloud endpoint (captures all browsers globally)
+    const CLOUD_URL = 'https://admin-panel-neon-eight-87.vercel.app/api/telemetry/ping';
+    const LOCAL_URL = 'http://127.0.0.1:52420/api/telemetry/ping';
+
+    try {
+      await fetch(CLOUD_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => {
+        // Fallback to local server if cloud is unreachable
+        return fetch(LOCAL_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }).catch(() => {});
+    } catch {
+      // Non-blocking fail-silent: extension functions 100% normally
+    }
   } catch {
     // Fail silent
   }

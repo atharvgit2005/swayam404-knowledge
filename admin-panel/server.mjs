@@ -243,124 +243,132 @@ function parseAuthToken(req) {
   return null;
 }
 
-export function createAdminServer(options = {}) {
+export async function handleAdminRequest(req, res, options = {}) {
   const dataFile = options.dataFile || DATA_FILE;
   loadTelemetryData(dataFile);
 
-  const server = http.createServer(async (req, res) => {
-    // CORS headers for extension pings
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  // CORS headers for extension pings
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Dev-Bypass');
 
-    if (req.method === 'OPTIONS') {
-      res.writeHead(204);
-      return res.end();
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    return res.end();
+  }
+
+  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const pathname = parsedUrl.pathname;
+
+  try {
+    // 1. Ingest Telemetry Ping from Extension
+    if (pathname === '/api/telemetry/ping' && req.method === 'POST') {
+      const body = await parseJsonBody(req);
+      const recorded = recordPing(body);
+      saveTelemetryData(dataFile);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, client: recorded }));
     }
 
-    const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-    const pathname = parsedUrl.pathname;
-
-    try {
-      // 1. Ingest Telemetry Ping from Extension
-      if (pathname === '/api/telemetry/ping' && req.method === 'POST') {
-        const body = await parseJsonBody(req);
-        const recorded = recordPing(body);
-        saveTelemetryData(dataFile);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ success: true, client: recorded }));
-      }
-
-      // 2. Simulate Telemetry Ping (Demo / Testing)
-      if (pathname === '/api/telemetry/simulate' && req.method === 'POST') {
-        const browsers = ['Chrome', 'Brave', 'Edge'];
-        const platforms = ['mac', 'windows', 'linux'];
-        const randomBrowser = browsers[Math.floor(Math.random() * browsers.length)];
-        const randomPlatform = platforms[Math.floor(Math.random() * platforms.length)];
-        const simulatedPayload = {
-          clientId: `sim-${crypto.randomBytes(4).toString('hex')}`,
-          browser: randomBrowser,
-          platform: randomPlatform,
-          version: '1.1.0',
-          event: 'simulated_ping',
-        };
-        const recorded = recordPing(simulatedPayload);
-        saveTelemetryData(dataFile);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ success: true, simulated: recorded }));
-      }
-
-      // 3. Google OAuth Verification
-      if (pathname === '/api/admin/auth/google' && req.method === 'POST') {
-        const body = await parseJsonBody(req);
-        const user = await verifyGoogleToken(body.idToken);
-        const token = createSession(user, 'google');
-        res.setHeader('Set-Cookie', `admin_session=${token}; Path=/; HttpOnly; SameSite=Lax`);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ success: true, token, user }));
-      }
-
-      // 4. Dev Mode Admin Login (For testing before Google OAuth credentials are set)
-      if (pathname === '/api/admin/auth/dev-login' && req.method === 'POST') {
-        const devUser = {
-          email: 'admin@swayam404.local',
-          name: 'Atharv Paharia (Admin)',
-          role: 'administrator',
-        };
-        const token = createSession(devUser, 'dev');
-        res.setHeader('Set-Cookie', `admin_session=${token}; Path=/; HttpOnly; SameSite=Lax`);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ success: true, token, user: devUser, mode: 'dev' }));
-      }
-
-      // 5. Admin Logout
-      if (pathname === '/api/admin/auth/logout' && req.method === 'POST') {
-        const token = parseAuthToken(req);
-        if (token) activeSessions.delete(token);
-        res.setHeader('Set-Cookie', `admin_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT`);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ success: true }));
-      }
-
-      // 6. Admin Telemetry Statistics (Protected)
-      if (pathname === '/api/admin/stats' && req.method === 'GET') {
-        const token = parseAuthToken(req);
-        const session = validateSession(token);
-
-        // Allow dev bypass if header X-Dev-Bypass is present or valid session exists
-        const hasDevBypass = req.headers['x-dev-bypass'] === 'true';
-
-        if (!session && !hasDevBypass) {
-          res.writeHead(401, { 'Content-Type': 'application/json' });
-          return res.end(JSON.stringify({ error: 'Unauthorized. Please sign in with Google Auth.' }));
-        }
-
-        const stats = computeStats();
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ success: true, stats, sessionUser: session?.user || { name: 'Preview Mode' } }));
-      }
-
-      // 7. Serve Static Dashboard UI
-      if (pathname === '/' || pathname === '/index.html') {
-        const htmlPath = path.join(__dirname, 'public', 'index.html');
-        if (fs.existsSync(htmlPath)) {
-          const content = fs.readFileSync(htmlPath, 'utf8');
-          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-          return res.end(content);
-        }
-      }
-
-      // 404 handler
-      res.writeHead(404, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: 'Not found' }));
-    } catch (err) {
-      console.error('[Admin Server Error]', err);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: err.message || 'Internal server error' }));
+    // 2. Simulate Telemetry Ping (Demo / Testing)
+    if (pathname === '/api/telemetry/simulate' && req.method === 'POST') {
+      const browsers = ['Chrome', 'Brave', 'Edge'];
+      const platforms = ['mac', 'windows', 'linux'];
+      const randomBrowser = browsers[Math.floor(Math.random() * browsers.length)];
+      const randomPlatform = platforms[Math.floor(Math.random() * platforms.length)];
+      const simulatedPayload = {
+        clientId: `sim-${crypto.randomBytes(4).toString('hex')}`,
+        browser: randomBrowser,
+        platform: randomPlatform,
+        version: '1.1.0',
+        event: 'simulated_ping',
+      };
+      const recorded = recordPing(simulatedPayload);
+      saveTelemetryData(dataFile);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, simulated: recorded }));
     }
-  });
 
-  return server;
+    // 3. Google OAuth Verification
+    if (pathname === '/api/admin/auth/google' && req.method === 'POST') {
+      const body = await parseJsonBody(req);
+      const user = await verifyGoogleToken(body.idToken);
+      const token = createSession(user, 'google');
+      res.setHeader('Set-Cookie', `admin_session=${token}; Path=/; HttpOnly; SameSite=Lax`);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, token, user }));
+    }
+
+    // 4. Dev Mode Admin Login (For testing before Google OAuth credentials are set)
+    if (pathname === '/api/admin/auth/dev-login' && req.method === 'POST') {
+      const devUser = {
+        email: 'admin@swayam404.local',
+        name: 'Atharv Paharia (Admin)',
+        role: 'administrator',
+      };
+      const token = createSession(devUser, 'dev');
+      res.setHeader('Set-Cookie', `admin_session=${token}; Path=/; HttpOnly; SameSite=Lax`);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, token, user: devUser, mode: 'dev' }));
+    }
+
+    // 5. Admin Logout
+    if (pathname === '/api/admin/auth/logout' && req.method === 'POST') {
+      const token = parseAuthToken(req);
+      if (token) activeSessions.delete(token);
+      res.setHeader('Set-Cookie', `admin_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT`);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true }));
+    }
+
+    // 6. Admin Telemetry Statistics (Protected)
+    if (pathname === '/api/admin/stats' && req.method === 'GET') {
+      const token = parseAuthToken(req);
+      const session = validateSession(token);
+
+      // Allow dev bypass if header X-Dev-Bypass is present or valid session exists
+      const hasDevBypass = req.headers['x-dev-bypass'] === 'true';
+
+      if (!session && !hasDevBypass) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ error: 'Unauthorized. Please sign in with Google Auth.' }));
+      }
+
+      const stats = computeStats();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, stats, sessionUser: session?.user || { name: 'Preview Mode' } }));
+    }
+
+    // 7. Serve Static Dashboard UI
+    if (pathname === '/' || pathname === '/index.html') {
+      const htmlPath = path.join(__dirname, 'public', 'index.html');
+      if (fs.existsSync(htmlPath)) {
+        const content = fs.readFileSync(htmlPath, 'utf8');
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        return res.end(content);
+      }
+    }
+
+    // 404 handler
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ error: 'Not found' }));
+  } catch (err) {
+    console.error('[Admin Server Error]', err);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ error: err.message || 'Internal server error' }));
+  }
+}
+
+export default function handler(req, res) {
+  const isVercel = Boolean(process.env.VERCEL);
+  const dataFile = isVercel ? '/tmp/telemetry.json' : DATA_FILE;
+  return handleAdminRequest(req, res, { dataFile });
+}
+
+export function createAdminServer(options = {}) {
+  const dataFile = options.dataFile || DATA_FILE;
+  loadTelemetryData(dataFile);
+  return http.createServer((req, res) => handleAdminRequest(req, res, { dataFile }));
 }
 
 if (process.argv[1] && process.argv[1].endsWith('server.mjs')) {

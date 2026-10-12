@@ -1,0 +1,9 @@
+{
+  "name": "swayam404-admin",
+  "version": "1.1.0",
+  "type": "module",
+  "description": "Swayam404 Admin Telemetry & Analytics Dashboard",
+  "scripts": {
+    "start": "node server.mjs"
+  }
+}

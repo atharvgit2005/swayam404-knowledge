@@ -48,7 +48,7 @@ export async function computeSha256(data: string | Uint8Array | object): Promise
     bytes = new TextEncoder().encode(String(data));
   }
 
-  // 1. Web Crypto API (Browser, Service Worker, and Node 19+)
+  // Web Crypto API (Browser, Service Worker, and Node 19+)
   if (typeof globalThis !== 'undefined' && globalThis.crypto?.subtle) {
     const hashBuffer = await globalThis.crypto.subtle.digest(
       'SHA-256',
@@ -58,14 +58,7 @@ export async function computeSha256(data: string | Uint8Array | object): Promise
     return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   }
 
-  // 2. Fallback to Node.js crypto module if available
-  try {
-    // Dynamic import to avoid bundling issues in pure browser builds
-    const nodeCrypto = await import('crypto');
-    return nodeCrypto.createHash('sha256').update(bytes).digest('hex');
-  } catch {
-    throw new Error('No crypto implementation available for SHA-256 calculation.');
-  }
+  throw new Error('Web Crypto API (crypto.subtle) is required for SHA-256 calculation.');
 }
 
 /**

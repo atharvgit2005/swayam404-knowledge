@@ -1,16 +1,67 @@
 import { StorageService } from '@/lib/storage';
+import { KnowledgeBaseService } from '@/lib/knowledge';
 
 console.log('[swayam404] Background service worker initialized.');
+
+/**
+ * Non-destructive background check for remote knowledge updates.
+ * Never executes code. Strictly unauthenticated read-only manifest inspection.
+ */
+async function checkKnowledgeUpdatesSafe(): Promise<void> {
+  try {
+    const settings = await StorageService.getSettings();
+    if (!settings?.knowledgeBaseEnabled || !settings?.knowledgeBaseRepoUrl?.trim()) {
+      return;
+    }
+    const res = await KnowledgeBaseService.checkForUpdates();
+    if (res.updateAvailable) {
+      console.log('[swayam404] Remote knowledge base update available:', res.latestVersion);
+      if (chrome.action?.setBadgeText) {
+        chrome.action.setBadgeText({ text: 'NEW' });
+        chrome.action.setBadgeBackgroundColor({ color: '#ffcc00' });
+      }
+    } else if (chrome.action?.setBadgeText) {
+      chrome.action.setBadgeText({ text: '' });
+    }
+  } catch (err) {
+    console.warn('[swayam404] Background update check failed (offline or network error):', err);
+  }
+}
 
 chrome.runtime.onInstalled.addListener(async (details) => {
   console.log('[swayam404] Extension installed/updated, reason:', details.reason);
   try {
     await StorageService.initDefaults();
     console.log('[swayam404] Default courses and settings initialized in storage.');
+
+    // Setup periodic alarm (every 6 hours) for background knowledge manifest checks
+    if (typeof chrome !== 'undefined' && chrome.alarms) {
+      chrome.alarms.create('swayam404_knowledge_check', {
+        periodInMinutes: 360,
+        delayInMinutes: 2,
+      });
+    }
+
+    // Trigger initial safe check
+    await checkKnowledgeUpdatesSafe();
   } catch (err) {
     console.error('[swayam404] Error initializing defaults on install:', err);
   }
 });
+
+if (chrome.runtime?.onStartup) {
+  chrome.runtime.onStartup.addListener(async () => {
+    await checkKnowledgeUpdatesSafe();
+  });
+}
+
+if (chrome.alarms?.onAlarm) {
+  chrome.alarms.onAlarm.addListener(async (alarm) => {
+    if (alarm.name === 'swayam404_knowledge_check') {
+      await checkKnowledgeUpdatesSafe();
+    }
+  });
+}
 
 // Coordinate side panel behavior in Chrome 114+
 if (chrome.sidePanel && 'setPanelBehavior' in chrome.sidePanel) {
@@ -131,6 +182,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
     })();
     return true; // Keep channel open for async sendResponse
+  }
+
+  // 3. Knowledge Base update check
+  if (message?.type === 'CHECK_KNOWLEDGE_UPDATES') {
+    (async () => {
+      try {
+        const res = await KnowledgeBaseService.checkForUpdates();
+        sendResponse({ success: true, result: res });
+      } catch (err) {
+        sendResponse({ success: false, error: (err as Error).message });
+      }
+    })();
+    return true;
+  }
+
+  // 4. Explicit Knowledge Base sync
+  if (message?.type === 'SYNC_KNOWLEDGE_BASE') {
+    (async () => {
+      try {
+        const res = await KnowledgeBaseService.syncNow(message.repoUrl);
+        if (res.success && chrome.action?.setBadgeText) {
+          chrome.action.setBadgeText({ text: '' });
+        }
+        sendResponse({ success: true, result: res });
+      } catch (err) {
+        sendResponse({ success: false, error: (err as Error).message });
+      }
+    })();
+    return true;
   }
 
   return false;

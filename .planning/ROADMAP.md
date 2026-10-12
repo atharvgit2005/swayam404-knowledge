@@ -218,6 +218,62 @@
 - [x] Verify production extension package (`dist/`), unpack loading workflow, submission immunity, and privacy guarantees.
 - [x] Verify all quality gates: typecheck, 347 tests, production build, deterministic pack generation, and contribution validation.
 
+### Phase 8: Reliable Update Architecture & Release Versioning Consistency (Complete)
+- [x] Strict architectural separation between remote knowledge-base updates (static JSON datasets) and immutable extension-code updates.
+- [x] Background update checks (`chrome.alarms` periodic 6-hour alarm, `onInstalled`, `onStartup`) with badge notifications and explicit update state machine (`up-to-date`, `update-available`, `downloading`, `updated`, `offline`, `update-failed`, `unconfigured`).
+- [x] Conditional requests (ETag/304), course hash comparison, zero unnecessary full-repo downloads, and atomic commits preserving the previous valid cache on failure.
+- [x] Offline startup and later synchronization with dynamic course catalog auto-registration.
+- [x] Extension-code versioning policy: SemVer consistency audit (`scripts/verify-versions.mjs`), visible installed version in Settings & popup footer, honest Developer Mode reload documentation, and unlisted Web Store preparation packaging (`scripts/package-zip.mjs`).
+- [x] Zero remote code execution (`script-src 'self'`), zero remote script evaluation, zero stored browser or GitHub tokens.
+- [x] Official website audit (`https://swayam404.vercel.app/`): current version display (v1.0.0), clear separation between pre-built extension ZIP and knowledge-base repository, release highlights changelog, and honest manual update instructions for unpacked mode.
+- [x] Comprehensive automated test suite (`src/test/knowledge-updates-and-versioning.test.ts`) covering all 10 acceptance criteria (367 total passing tests across 22 test files).
+- [x] Full quality gates passed: `npm run typecheck`, `npm test`, `npm run build`, and `node scripts/validate-contributions.mjs`.
+
+### Phase 9: Local-Only Installer & Updater Prototype (Complete)
+- [x] Built local release environment (`scripts/generate-local-release.mjs`) generating verified ZIP packages, SHA-256 checksums, and `local-releases/latest.json` metadata.
+- [x] Implemented lightweight development-only local update server (`local-update-server/server.mjs`) strictly bound to `127.0.0.1` (loopback only) with `/health`, `/latest.json`, and `/releases/:filename` endpoints, path traversal guards, and no remote dependencies.
+- [x] Built in-extension updater client (`src/lib/updater/`) with robust SemVer comparison (handling multi-digit components `1.2.0` vs `1.10.0`, older/newer, prereleases), Web Crypto SHA-256 verification, and mutex concurrency protection.
+- [x] Implemented interactive Neo-Brutalist updater card (`src/features/settings/ExtensionUpdaterCard.tsx`) embedded in Settings with telemetry strip, configurable server endpoint, check/download actions, and explicit unpacked Developer Mode manual reload guidance.
+- [x] Covered all 10 update states: `up-to-date`, `checking`, `update-available`, `downloading`, `download-verified`, `manual-install-required`, `check-failed`, `invalid-metadata`, `checksum-mismatch`, `server-unavailable`.
+- [x] Authored developer testing guide (`docs/local-installation-testing.md`) with complete walkthrough, trust model analysis, and Chrome Manifest V3 security boundaries.
+- [x] Implemented automated test suite (`src/test/local-updater.test.ts`) covering all 10 scenarios (A through J).
+- [x] Full quality gates verified: `npm run typecheck` (0 errors), `npm test` (377 passing tests across 23 test files), `npm run build`, and `node scripts/validate-contributions.mjs`.
+
+### Phase 10: Updater Hardening, End-to-End Verification & Safe Local Installation Workflow (Complete)
+- [x] Defined and implemented the rigid 9-stage update lifecycle: Check, Compare, Download, Verify, Stage, Apply, Reload, Confirm, Recover.
+- [x] Implemented zero-dependency pure JavaScript/Web-standard ZIP entry inspector (`src/lib/updater/zipValidator.ts` and `scripts/zipValidator.mjs`) auditing Central Directory headers against Zip Slip, directory escapes (`..`), absolute paths (`/`), drive letters (`C:`), null bytes, decompression bombs (>50MB), and missing mandatory extension bundle assets (`manifest.json`, `background.js`, `popup.html`, `content.js`).
+- [x] Hardened `scripts/generate-local-release.mjs` with safe process execution (`/usr/bin/zip`), strict staging validation, and pre-release bundle security verification before generating `latest.json`.
+- [x] Hardened `local-update-server/server.mjs` with strict loopback validation, route whitelisting, path containment guards, null-byte rejection, and sanitized 400/404/500 error responses (zero filesystem path leakage).
+- [x] Built safe local apply and recovery utility (`scripts/apply-local-update.mjs`) with safe ZIP inspection, isolated staging extraction (`local-staging/v{version}/`), automatic timestamped backup in `local-backups/`, atomic replacement in `dist/`, automatic fallback on failure, and instant `--rollback` CLI flag. Added `npm run update:apply` and `npm run update:rollback`.
+- [x] Updated extension UI (`src/features/settings/ExtensionUpdaterCard.tsx`) with 9-stage visual progress indicator, clear apply guidance, "Confirm Running Version" action, and recovery/rollback instructions.
+- [x] Conservative `.gitignore` updates isolating `local-staging/`, `local-backups/`, and `local-releases/*.json` without hiding source code.
+- [x] Comprehensive automated test suite (`src/test/local-updater.test.ts`) covering 17 end-to-end scenarios (A through Q) including Zip Slip detection, truncated download detection, apply and rollback execution, running version confirmation, and error sanitization.
+- [x] Full quality gates passed: `npm run typecheck` (0 errors), `npm test` (384 passing tests across 23 test suites), `npm run build`, and `node scripts/validate-contributions.mjs`.
+- [x] Comprehensive developer documentation updated in `docs/local-installation-testing.md`.
+
+### Phase 11: Knowledge Sync Fallback Fix & Cross-Platform Desktop Installer/Updater App (Mac & Windows) (Complete)
+- [x] Fixed "Take Answers from GitHub Bank" fallback in `src/lib/knowledge/service.ts`: added bundled sample bank support for `course-econ-101` (`economics-sample.json`), `course-ent-201` (`entrepreneurship-sample.json`), and graceful starter seeds for custom courses.
+- [x] Updated `src/features/settings/SettingsTab.tsx` with a one-click "Use Official GitHub Repo" shortcut, `<owner>` placeholder detection, and friendly diagnostics.
+- [x] Verified and updated `CourseCompletionDashboard.tsx` for consistent answer-bank import across all courses.
+- [x] Built standalone cross-platform Desktop Installer & Updater App backend (`installer-app/server.mjs`) with REST API on loopback (`127.0.0.1:52410`).
+- [x] Designed responsive, dark-mode Neo-Brutalist Desktop UI (`installer-app/public/index.html`) with live status telemetry, one-click build, local server toggle, release generator, safe update apply, rollback, and live terminal console.
+- [x] Created macOS desktop launchers (`installer-app/mac/Swayam404 Installer.command`, `installer-app/mac/Swayam404 Installer.app`, and root `Swayam404-Installer-Mac.command`).
+- [x] Created Windows desktop launchers (`installer-app/windows/Swayam404-Installer.bat`, `installer-app/windows/Swayam404-Installer.cmd`, `installer-app/windows/Swayam404-Installer.ps1`, and root `Swayam404-Installer-Windows.bat`).
+- [x] Added npm scripts in `package.json`: `"installer"` and `"installer:open"`.
+- [x] Implemented dedicated automated test suite (`src/test/installer-app.test.ts`) covering system telemetry, static file serving, server toggling, and directory traversal security.
+- [x] Authored comprehensive guide in `docs/desktop-installer-guide.md`.
+- [x] Passed all quality gates: `npm run typecheck` (0 errors), `npm test` (390 passing tests across 24 test suites), `npm run build` (verified zero `_` filenames).
+
+### Phase 12: GitHub Releases Live Sync & Standalone Desktop Installer Packaging (Mac & Windows) (Complete)
+- [x] Implemented GitHub Releases check and asset discovery endpoint (`GET /api/github/check`) in `installer-app/server.mjs`.
+- [x] Implemented GitHub release asset download, SHA-256 verification, Zip Slip audit, and atomic apply endpoint (`POST /api/github/download-and-apply`) in `installer-app/server.mjs`.
+- [x] Added live GitHub sync controls, repository input, telemetry table, and live console logging into `installer-app/public/index.html`.
+- [x] Built in-extension companion bridge in `ExtensionUpdaterCard.tsx` enabling 1-click update trigger from inside Chrome and instant reload button (`chrome.runtime.reload()`).
+- [x] Created cross-platform extraction helper (`extractZipSafe`) supporting macOS, Linux, and Windows PowerShell natively.
+- [x] Created distributable packager script (`scripts/bundle-installer.mjs`) and `"package:installer"` script producing ready packages in `dist-installer/` (`Swayam404-Installer-macOS.zip` and `Swayam404-Installer-Windows.zip`).
+- [x] Authored complete website integration and maintainer distribution guide in `docs/github-release-distribution.md`.
+- [x] Created automated test suite in `src/test/github-release-sync.test.ts` (6 tests).
+- [x] Passed all quality gates: typecheck (0 errors), 396 tests passing across 25 suites (100%), and production build.
 
 
 

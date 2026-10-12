@@ -167,15 +167,42 @@ export interface KnowledgeSyncOptions {
   customUrl?: string;
 }
 
+export type KnowledgeUpdateState =
+  | 'unconfigured'
+  | 'up-to-date'
+  | 'update-available'
+  | 'downloading'
+  | 'updated'
+  | 'offline'
+  | 'update-failed'
+  | 'syncing'
+  | 'synced'
+  | 'out-of-sync'
+  | 'error';
+
+export interface KnowledgeUpdateCheckResult {
+  updateAvailable: boolean;
+  state: KnowledgeUpdateState;
+  currentVersion?: string;
+  latestVersion?: string;
+  changedCourses: string[];
+  newCourses: string[];
+  error?: string;
+  isOffline?: boolean;
+}
+
 export interface KnowledgeSyncStatus {
   configured: boolean;
   repoUrl: string;
   lastSyncTimestamp?: string;
   datasetVersion?: string;
+  remoteDatasetVersion?: string;
   coursesCount: number;
   resourcesCount: number;
   reviewRecordsCount: number;
-  status: 'unconfigured' | 'syncing' | 'synced' | 'out-of-sync' | 'error';
+  status: KnowledgeUpdateState;
+  updateState?: KnowledgeUpdateState;
+  updateAvailable?: boolean;
   lastError?: string;
   courseSyncStatus?: Record<string, 'synced' | 'failed' | 'partial'>;
 }
@@ -189,6 +216,7 @@ export interface KnowledgeSyncResult {
   datasetVersion?: string;
   error?: string;
   courseErrors?: Record<string, string>;
+  isOffline?: boolean;
 }
 
 export type RetrievalSourceType = 'local-course-material' | 'shared-knowledge-base';

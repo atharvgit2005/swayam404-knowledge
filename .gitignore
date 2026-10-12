@@ -3,3 +3,12 @@ dist
 .DS_Store
 *.log
 *.zip
+*.dmg
+local-releases/*.zip
+local-releases/*.json
+local-releases/.staging*
+local-staging/
+local-backups/
+dist-installer/
+installer-app/node_modules
+installer-app/package-lock.json

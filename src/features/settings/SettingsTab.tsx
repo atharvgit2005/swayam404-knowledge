@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { KnowledgeBaseService } from '@/lib/knowledge';
 import { KnowledgeSyncStatus } from '@/types/knowledge';
+import { ExtensionUpdaterCard } from './ExtensionUpdaterCard';
 
 interface SettingsTabProps {
   onRefreshData: () => Promise<void>;
@@ -41,6 +42,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onRefreshData }) => {
   // Knowledge base state
   const [kbStatus, setKbStatus] = useState<KnowledgeSyncStatus | null>(null);
   const [isSyncingKb, setIsSyncingKb] = useState(false);
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
   const [kbRepoUrl, setKbRepoUrl] = useState('');
   const [kbSyncMessage, setKbSyncMessage] = useState<string | null>(null);
   const [kbSyncError, setKbSyncError] = useState<string | null>(null);
@@ -142,6 +144,11 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onRefreshData }) => {
     setIsSyncingKb(true);
     setKbSyncMessage(null);
     setKbSyncError(null);
+    if (!kbRepoUrl.trim() || kbRepoUrl.includes('<owner>')) {
+      setKbSyncError('Please replace "<owner>" with your GitHub username or click "Use Official GitHub Repo" below.');
+      setIsSyncingKb(false);
+      return;
+    }
     try {
       const res = await KnowledgeBaseService.syncNow(kbRepoUrl);
       if (res.success) {
@@ -156,6 +163,37 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onRefreshData }) => {
       setKbSyncError((e as Error)?.message || 'Unexpected synchronization error');
     } finally {
       setIsSyncingKb(false);
+    }
+  };
+
+  const handleCheckForUpdates = async () => {
+    setIsCheckingUpdates(true);
+    setKbSyncMessage(null);
+    setKbSyncError(null);
+    if (!kbRepoUrl.trim() || kbRepoUrl.includes('<owner>')) {
+      setKbSyncError('Please replace "<owner>" with your GitHub username or click "Use Official GitHub Repo" below.');
+      setIsCheckingUpdates(false);
+      return;
+    }
+    try {
+      const checkRes = await KnowledgeBaseService.checkForUpdates(kbRepoUrl);
+      if (checkRes.state === 'offline') {
+        setKbSyncError('Device or repository appears offline. Cached knowledge remains available.');
+      } else if (checkRes.state === 'update-failed') {
+        setKbSyncError(`Update check failed: ${checkRes.error || 'Invalid manifest'}`);
+      } else if (checkRes.updateAvailable) {
+        setKbSyncMessage(
+          `Update available! Latest dataset: v${checkRes.latestVersion}. Click 'Sync Knowledge Base' to update.`
+        );
+      } else {
+        setKbSyncMessage(`Knowledge base is up to date (v${checkRes.currentVersion || '1.0.0'}).`);
+      }
+      const status = await KnowledgeBaseService.getStatus();
+      setKbStatus(status);
+    } catch (e: unknown) {
+      setKbSyncError((e as Error)?.message || 'Check failed');
+    } finally {
+      setIsCheckingUpdates(false);
     }
   };
 
@@ -629,16 +667,24 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onRefreshData }) => {
           <span
             style={{
               fontSize: '10px',
-              fontWeight: 700,
+              fontWeight: 800,
               padding: '2px 8px',
               borderRadius: '4px',
               border: '1px solid #1a1a1a',
               background: !settings?.knowledgeBaseEnabled || !kbRepoUrl.trim()
                 ? '#334155'
-                : kbStatus?.status === 'synced'
-                ? '#15803d'
-                : kbStatus?.status === 'error' || kbSyncError
+                : isSyncingKb
+                ? '#0284c7'
+                : isCheckingUpdates
+                ? '#0284c7'
+                : kbStatus?.status === 'offline'
+                ? '#475569'
+                : kbStatus?.status === 'update-failed' || kbSyncError
                 ? '#b91c1c'
+                : kbStatus?.status === 'update-available'
+                ? '#d97706'
+                : kbStatus?.status === 'updated' || kbStatus?.status === 'up-to-date' || kbStatus?.status === 'synced'
+                ? '#15803d'
                 : '#ca8a04',
               color: '#ffffff',
             }}
@@ -646,11 +692,19 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onRefreshData }) => {
             {!settings?.knowledgeBaseEnabled || !kbRepoUrl.trim()
               ? 'UNCONFIGURED (LOCAL ONLY)'
               : isSyncingKb
-              ? 'SYNCING...'
-              : kbStatus?.status === 'synced'
-              ? `SYNCED (v${kbStatus?.datasetVersion || '1.0.0'})`
-              : kbSyncError
-              ? 'SYNC FAILED'
+              ? 'DOWNLOADING...'
+              : isCheckingUpdates
+              ? 'CHECKING...'
+              : kbStatus?.status === 'offline'
+              ? 'OFFLINE'
+              : kbStatus?.status === 'update-failed' || kbSyncError
+              ? 'UPDATE FAILED'
+              : kbStatus?.status === 'update-available'
+              ? `UPDATE AVAILABLE (v${kbStatus?.remoteDatasetVersion || 'New'})`
+              : kbStatus?.status === 'updated'
+              ? `UPDATED (v${kbStatus?.datasetVersion || '1.0.0'})`
+              : kbStatus?.status === 'up-to-date' || kbStatus?.status === 'synced'
+              ? `UP TO DATE (v${kbStatus?.datasetVersion || '1.0.0'})`
               : 'READY TO SYNC'}
           </span>
         </div>
@@ -696,6 +750,27 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onRefreshData }) => {
                   fontFamily: 'monospace',
                 }}
               />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap', gap: '4px' }}>
+                <span style={{ fontSize: '10px', color: '#64748b' }}>
+                  Raw GitHub repository URL hosting manifest.json & courses/
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleSaveKbRepoUrl('https://raw.githubusercontent.com/atharvpaharia100/swayam404-knowledge/main')}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#ffcc00',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    padding: 0,
+                  }}
+                >
+                  Use Official GitHub Repo
+                </button>
+              </div>
             </div>
 
             {/* Telemetry Strip */}
@@ -747,7 +822,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onRefreshData }) => {
                 type="button"
                 className="btn btn-secondary"
                 onClick={handleTakeAnswersFromGitHubBank}
-                disabled={isImportingFromGitHub || isSyncingKb}
+                disabled={isImportingFromGitHub || isSyncingKb || isCheckingUpdates}
                 style={{ fontSize: '11px', padding: '6px 12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', background: '#ffcc00', color: '#1a1a1a' }}
                 title="Loads verified answers from the GitHub repository directly into your local course answer bank"
               >
@@ -758,16 +833,117 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onRefreshData }) => {
               <button
                 type="button"
                 className="btn btn-secondary"
+                onClick={handleCheckForUpdates}
+                disabled={isCheckingUpdates || isSyncingKb || !kbRepoUrl.trim()}
+                style={{ fontSize: '11px', padding: '6px 12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}
+                title="Checks if a newer manifest version exists without downloading packs"
+              >
+                <RefreshCw size={12} className={isCheckingUpdates ? 'animate-spin' : ''} />
+                <span>{isCheckingUpdates ? 'Checking...' : 'Check for Updates'}</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
                 onClick={handleSyncKnowledgeBase}
-                disabled={isSyncingKb || !kbRepoUrl.trim()}
+                disabled={isSyncingKb || isCheckingUpdates || !kbRepoUrl.trim()}
                 style={{ fontSize: '11px', padding: '6px 12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 <RefreshCw size={12} className={isSyncingKb ? 'animate-spin' : ''} />
-                <span>{isSyncingKb ? 'Syncing Knowledge Base...' : 'Sync Knowledge Base'}</span>
+                <span>{isSyncingKb ? 'Syncing...' : 'Sync Knowledge Base'}</span>
               </button>
             </div>
           </div>
         )}
+      </div>
+
+      {/* Local Extension Code Updater Prototype */}
+      <ExtensionUpdaterCard />
+
+      {/* Extension Code Versioning & Update Policy Card */}
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Cpu size={14} style={{ color: '#0055ff' }} />
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-main)' }}>
+              Extension Application Versioning & Code Updates
+            </span>
+          </div>
+
+          <span
+            style={{
+              fontSize: '10px',
+              fontWeight: 800,
+              padding: '2px 8px',
+              borderRadius: '4px',
+              background: '#0055ff',
+              color: '#ffffff',
+              border: '1px solid #1a1a1a',
+            }}
+          >
+            v{typeof chrome !== 'undefined' && chrome.runtime?.getManifest ? chrome.runtime.getManifest().version : '1.0.0'}
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', background: '#0f172a', padding: '8px', borderRadius: '4px', border: '1px solid #1e293b' }}>
+          <div>
+            <div style={{ fontSize: '9px', color: '#64748b' }}>INSTALLATION CHANNEL</div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#ffcc00' }}>
+              Unpacked (Developer Mode)
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '9px', color: '#64748b' }}>CODE UPDATE CAPABILITY</div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#fff' }}>
+              Manual ZIP / Reload Required
+            </div>
+          </div>
+        </div>
+
+        <div style={{ background: '#f8fafc', border: '1.5px solid #1a1a1a', padding: '10px', fontSize: '11px', lineHeight: 1.45, color: '#1a1a1a' }}>
+          <strong>Understanding Updates in Swayam404:</strong>
+          <ul style={{ paddingLeft: '16px', margin: '4px 0 0 0' }}>
+            <li>
+              <strong>Knowledge Base Updates:</strong> The remote repository sync above updates course study materials and answer packs dynamically without reinstalling.
+            </li>
+            <li>
+              <strong>Extension Code Updates:</strong> Extensions installed via &quot;Load unpacked&quot; (Developer Mode) or ZIP <em>cannot</em> automatically update executable code in the background due to Chrome Manifest V3 security policies.
+            </li>
+            <li>
+              <strong>How to Update Code (ZIP / Unpacked):</strong> Download the latest release from the official website, extract the ZIP into your existing extension folder, and click the <strong>Reload (↻)</strong> icon in <code>chrome://extensions</code>.
+            </li>
+            <li>
+              <strong>Future Web Store Release:</strong> Once distributed through the Chrome Web Store, code updates will install silently in the background via Google&apos;s native update channel.
+            </li>
+            <li>
+              <strong>Zero Remote Execution:</strong> Swayam404 never injects remote scripts, never executes remote JavaScript, and never stores browser credentials or write tokens.
+            </li>
+          </ul>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', paddingTop: '2px' }}>
+          <a
+            href="https://swayam404.vercel.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-secondary"
+            style={{ fontSize: '11px', padding: '6px 12px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '5px', textDecoration: 'none' }}
+          >
+            <ExternalLink size={12} />
+            <span>Official Website & Downloads ↗</span>
+          </a>
+
+          <a
+            href="https://github.com/atharvgit2005/swayam404-knowledge/releases"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-secondary"
+            style={{ fontSize: '11px', padding: '6px 12px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '5px', textDecoration: 'none' }}
+          >
+            <ExternalLink size={12} />
+            <span>Release Notes & Changelog ↗</span>
+          </a>
+        </div>
       </div>
 
       {/* Appearance & System Dark Mode */}

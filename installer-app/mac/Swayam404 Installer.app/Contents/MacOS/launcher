@@ -1,0 +1,29 @@
+#!/bin/bash
+# Swayam404 macOS App Bundle Executable
+APP_DIR="$(cd "$(dirname "$0")/../../../../.." && pwd)"
+cd "$APP_DIR" || exit 1
+
+PORT=52410
+APP_URL="http://127.0.0.1:${PORT}"
+
+# Ensure node is in PATH (common locations)
+export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node 2>/dev/null | tail -n 1)/bin:$PATH"
+
+# Start backend server
+node installer-app/server.mjs &
+SERVER_PID=$!
+
+sleep 1
+
+# Launch in native window or isolated app mode
+if [ -x "$DIR/native-window" ]; then
+    "$DIR/native-window"
+elif [ -d "/Applications/Brave Browser.app" ]; then
+    open -na "/Applications/Brave Browser.app" --args --app="$APP_URL" --user-data-dir="/tmp/swayam404-app-profile"
+elif [ -d "/Applications/Google Chrome.app" ]; then
+    open -na "/Applications/Google Chrome.app" --args --app="$APP_URL" --user-data-dir="/tmp/swayam404-app-profile"
+else
+    open "$APP_URL"
+fi
+
+wait $SERVER_PID

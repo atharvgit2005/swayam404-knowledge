@@ -2,16 +2,26 @@
  
 ## Current Status
 - **Milestone**: Milestone 9 — Shared Knowledge Base Foundation
-- **Current Phase**: Phase 7 — First Public Knowledge Release & Live Deployment Verification
+- **Milestone**: Milestone 9 — Shared Knowledge Base Foundation
+- **Current Phase**: Phase 12 — GitHub Releases Live Sync & Standalone Desktop Installer Packaging (Mac & Windows)
 - **Status**: Completed & Verified
-- **Last Action**: Completed Phase 7 publication dataset audit, tooling enhancement, security validation, and release verification:
-  1. **Publication Dataset Audit**: Audited all resources in `knowledge-base/` and confirmed 100% of current course packs (`course-econ-101`, `course-ent-201`) are synthetic development benchmark fixtures and test fixtures with `example.org` origins. Zero genuine university handouts exist yet. Explicitly classified in code and documentation.
-  2. **Release-Readiness Reporting in Scripts (`scripts/validate-contributions.mjs`)**: Enhanced maintainer CLI with classification counters (synthetic fixtures, genuine resources, released reviews) and an automated release-readiness status report.
-  3. **URL Security Hardening (`src/lib/knowledge/security.ts` & `client.ts`)**: Built `validateRepositoryUrl` rejecting embedded credentials (`user:pass@`), non-HTTP/HTTPS protocols, and malformed URLs. Ensured unconfigured URLs return safe null responses without network errors.
-  4. **Release Checklist & Manual Verification Guide (`docs/PUBLIC_KNOWLEDGE_RELEASE_CHECKLIST.md`)**: Produced 12-dimension verification matrix marking 10 PASS and 2 BLOCKED (pending maintainer public GitHub repository creation and genuine course handout authorization). Documented raw GitHub URL format and manual testing steps.
-  5. **Automated Test Suite Expansion (`src/test/knowledge-release-publication.test.ts`)**: Added 16 dedicated Phase 7 verification tests covering URL security, dataset classification, failure recovery, offline access, chunk retrieval latency, and unconfigured safety. Total test suite: **347 tests across 21 suites (100% passing)**.
-  6. **Production Extension & Safety Gates**: Built and inspected `dist/` extension package. Confirmed unpacked installation procedure for Brave/Chrome, verified submission immunity, and confirmed zero PII leakage.
-  7. **Quality Gates Passed**: `npm run typecheck` (0 errors), `npm test` (347 passing), `npm run build` (packaged in `dist/`), `scripts/build-course-packs.mjs --check-only` (0 errors), `scripts/validate-contributions.mjs` (0 errors).
+- **Last Action**: Built direct GitHub Releases live sync, extension-to-companion trigger bridge, and standalone installer packaging:
+  1. **GitHub Releases Live Sync Engine (`installer-app/server.mjs`)**:
+     - `GET /api/github/check`: Queries GitHub Releases API, extracts release tags, release notes, assets, and SHA-256 digests.
+     - `POST /api/github/download-and-apply`: Directly downloads release asset ZIP from GitHub, validates SHA-256 integrity, verifies package with pure JavaScript ZIP inspector (`scripts/zipValidator.mjs`) preventing Zip Slip, creates timestamped snapshot in `local-backups/`, and replaces `dist/` in-place.
+  2. **Desktop Dashboard GitHub Card (`installer-app/public/index.html`)**:
+     - Embedded Neo-Brutalist "GitHub Releases Live Sync & 1-Click Install" card with repository input (`atharvpaharia100/swayam404`), live telemetry table, one-click install button, and live console streaming.
+  3. **In-Extension Companion Bridge (`ExtensionUpdaterCard.tsx`)**:
+     - Added **"⚡ 1-Click Apply via Desktop App"** button that communicates directly with `http://127.0.0.1:52410/api/update/apply` or GitHub install.
+     - Added instant **"🔄 Reload Extension Now (Stage 7)"** button using `chrome.runtime.reload()`.
+  4. **Cross-Platform Extraction & Standalone Distributables (`scripts/bundle-installer.mjs`)**:
+     - Created `extractZipSafe` handling macOS, Linux (`unzip`), and Windows PowerShell (`Expand-Archive`).
+     - Added `"package:installer"` script assembling standalone distributables in `dist-installer/`: `Swayam404-Installer-macOS.zip` (20.7 KB) and `Swayam404-Installer-Windows.zip` (20.0 KB).
+  5. **Website Integration Guide (`docs/github-release-distribution.md`)**:
+     - Comprehensive guide with OS-detection snippet, Neo-Brutalist HTML download card, 3-step quick start, and maintainer release checklist.
+  6. **Automated Test Suite (`src/test/github-release-sync.test.ts`)**: Added 6 tests. Total test suite: **396 tests across 25 test files (100% passing)**.
+  7. **Quality Gates Passed**: `npm run typecheck` (0 errors), `npm test` (396 passing), `npm run build` (verified clean `dist/` with zero `_` prefix filenames).
+
 
 
 

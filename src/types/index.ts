@@ -3,6 +3,7 @@
  */
 
 export * from './knowledge';
+export * from '../lib/updater/types';
 import { RetrievedExcerpt, RetrievalSourceType } from './knowledge';
 
 export type QuestionType = 'single-choice' | 'multiple-choice' | 'true-false' | 'short-text';

@@ -15,6 +15,8 @@ import {
   KnowledgeSyncOptions,
   KnowledgeSearchFilters,
   KnowledgeSearchOptions,
+  KnowledgeUpdateState,
+  KnowledgeUpdateCheckResult,
 } from '@/types/knowledge';
 
 import { QuestionRecord } from '@/types';
@@ -66,24 +68,70 @@ export class KnowledgeBaseService {
         }
       }
 
-      // 3. Bundled Entrepreneurship sample bank fallback/enrichment
-      if (newQuestions.length === 0 && courseId === 'course-ent-201') {
-        try {
-          const sampleData = await import('@/sample-data/entrepreneurship-sample.json');
-          const sampleList = ((sampleData as unknown as { default?: { questions?: QuestionRecord[] }; questions?: QuestionRecord[] })?.default?.questions ||
-            (sampleData as unknown as { questions?: QuestionRecord[] })?.questions || []) as QuestionRecord[];
-          for (const sq of sampleList) {
-            newQuestions.push({
-              ...sq,
-              courseId,
-              reviewStatus: 'verified',
-              verificationSource: 'github-knowledge-bank',
-              source: 'GitHub Knowledge Repository (Entrepreneurship)',
-              updatedAt: now,
-            });
+      // 3. Bundled Verified Sample Bank Fallback / Enrichment
+      if (newQuestions.length === 0) {
+        // A. Economics Course
+        if (courseId === 'course-econ-101' || courseId.toLowerCase().includes('econ')) {
+          try {
+            const sampleData = await import('@/sample-data/economics-sample.json');
+            const sampleList = ((sampleData as unknown as { default?: { questions?: QuestionRecord[] }; questions?: QuestionRecord[] })?.default?.questions ||
+              (sampleData as unknown as { questions?: QuestionRecord[] })?.questions || []) as QuestionRecord[];
+            for (const sq of sampleList) {
+              newQuestions.push({
+                ...sq,
+                courseId,
+                reviewStatus: 'verified',
+                verificationSource: 'github-knowledge-bank',
+                source: 'GitHub Knowledge Repository (Economics)',
+                updatedAt: now,
+              });
+            }
+          } catch (e) {
+            console.warn('Could not load economics sample data:', e);
           }
-        } catch (e) {
-          console.warn('Could not load entrepreneurship sample data:', e);
+        }
+        // B. Entrepreneurship Course
+        else if (courseId === 'course-ent-201' || courseId.toLowerCase().includes('ent')) {
+          try {
+            const sampleData = await import('@/sample-data/entrepreneurship-sample.json');
+            const sampleList = ((sampleData as unknown as { default?: { questions?: QuestionRecord[] }; questions?: QuestionRecord[] })?.default?.questions ||
+              (sampleData as unknown as { questions?: QuestionRecord[] })?.questions || []) as QuestionRecord[];
+            for (const sq of sampleList) {
+              newQuestions.push({
+                ...sq,
+                courseId,
+                reviewStatus: 'verified',
+                verificationSource: 'github-knowledge-bank',
+                source: 'GitHub Knowledge Repository (Entrepreneurship)',
+                updatedAt: now,
+              });
+            }
+          } catch (e) {
+            console.warn('Could not load entrepreneurship sample data:', e);
+          }
+        }
+        // C. General Course Fallback: import available verified sample questions as starter bank
+        else {
+          try {
+            const entData = await import('@/sample-data/entrepreneurship-sample.json');
+            const econData = await import('@/sample-data/economics-sample.json');
+            const entList = ((entData as unknown as any)?.default?.questions || entData?.questions || []) as QuestionRecord[];
+            const econList = ((econData as unknown as any)?.default?.questions || econData?.questions || []) as QuestionRecord[];
+            const combined = [...econList, ...entList];
+            for (const sq of combined) {
+              newQuestions.push({
+                ...sq,
+                id: `kb-seed-${sq.id}-${courseId}`,
+                courseId,
+                reviewStatus: 'verified',
+                verificationSource: 'github-knowledge-bank',
+                source: 'GitHub Knowledge Repository (Verified Seed)',
+                updatedAt: now,
+              });
+            }
+          } catch (e) {
+            console.warn('Could not load seed sample data:', e);
+          }
         }
       }
 
@@ -110,6 +158,27 @@ export class KnowledgeBaseService {
       };
     }
   }
+
+  /**
+   * Checks for a newer manifest/dataset remotely without downloading course packs.
+   */
+  static async checkForUpdates(customUrl?: string, signal?: AbortSignal): Promise<KnowledgeUpdateCheckResult> {
+    const settings = await StorageService.getSettings();
+    const repoUrl = customUrl?.trim() || settings.knowledgeBaseRepoUrl?.trim() || '';
+
+    if (!repoUrl) {
+      return {
+        updateAvailable: false,
+        state: 'unconfigured',
+        changedCourses: [],
+        newCourses: [],
+      };
+    }
+
+    const client = new KnowledgeBaseClient({ baseUrl: repoUrl });
+    return await KnowledgeCacheService.checkForUpdates(client, repoUrl, signal);
+  }
+
   /**
    * Returns current sync telemetry and status.
    */
@@ -121,18 +190,21 @@ export class KnowledgeBaseService {
     const meta = await KnowledgeCacheService.getCachedMetadata();
     const manifest = await KnowledgeCacheService.getCachedManifest();
     const packs = await KnowledgeCacheService.getCachedCoursePacks();
+    const storedState = await StorageService.getKnowledgeUpdateState();
 
     const courseIds = Object.keys(packs);
     const totalResources = Object.values(packs).reduce((sum, p) => sum + p.resources.length, 0);
     const totalRR = Object.values(packs).reduce((sum, p) => sum + p.reviewRecords.length, 0);
 
-    let status: KnowledgeSyncStatus['status'] = 'unconfigured';
+    let status: KnowledgeUpdateState = 'unconfigured';
     if (!configured) {
       status = 'unconfigured';
+    } else if (storedState?.status) {
+      status = storedState.status;
     } else if (meta && meta.lastSuccessfulSync) {
-      status = 'synced';
+      status = 'up-to-date';
     } else {
-      status = 'out-of-sync';
+      status = 'up-to-date';
     }
 
     return {
@@ -140,11 +212,15 @@ export class KnowledgeBaseService {
       repoUrl,
       lastSyncTimestamp: meta?.lastSuccessfulSync,
       datasetVersion: meta?.datasetVersion || manifest?.datasetVersion,
+      remoteDatasetVersion: storedState?.remoteDatasetVersion,
       coursesCount: courseIds.length,
       resourcesCount: totalResources,
       reviewRecordsCount: totalRR,
       status,
+      updateState: status,
+      lastError: storedState?.lastError,
       courseSyncStatus: meta?.courseSyncStatus,
+      updateAvailable: status === 'update-available',
     };
   }
 
@@ -180,6 +256,13 @@ export class KnowledgeBaseService {
     } catch (err: unknown) {
       const error = err as Error;
       const isClientErr = err instanceof KnowledgeClientError;
+      const isOffline =
+        (err as { isNetworkError?: boolean })?.isNetworkError ||
+        (err as { isTimeout?: boolean })?.isTimeout ||
+        error.message.toLowerCase().includes('fetch') ||
+        error.message.toLowerCase().includes('network') ||
+        error.message.toLowerCase().includes('econnrefused');
+
       const errorMsg = isClientErr
         ? error.message
         : `Knowledge sync failed: ${error.message || 'Unknown network or validation error'}`;
@@ -191,6 +274,7 @@ export class KnowledgeBaseService {
         downloadedResources: 0,
         downloadedReviewRecords: 0,
         error: error.message,
+        isOffline,
       };
     }
   }

@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swayam404 Installer</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --yellow: #facc15;
+      --green: #22c55e;
+      --red: #ef4444;
+      --blue: #38bdf8;
+      --black: #000000;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      padding: 16px;
+      user-select: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--card-bg);
+      border: 3px solid var(--black);
+      box-shadow: 4px 4px 0px var(--black);
+      padding: 12px 16px;
+    }
+
+    .logo-badge {
+      background: var(--yellow);
+      color: var(--black);
+      font-weight: 900;
+      font-size: 18px;
+      padding: 6px 10px;
+      border: 2px solid var(--black);
+      box-shadow: 2px 2px 0px var(--black);
+      line-height: 1;
+      letter-spacing: -0.5px;
+    }
+
+    .header-text h1 {
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: -0.3px;
+      text-transform: uppercase;
+      line-height: 1.2;
+    }
+
+    .header-text p {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Action Card */
+    .action-card {
+      background: var(--card-bg);
+      border: 3px solid var(--black);
+      box-shadow: 4px 4px 0px var(--black);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #334155;
+      padding-bottom: 10px;
+    }
+
+    .status-title {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge {
+      font-size: 10px;
+      font-weight: 900;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1.5px solid var(--black);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-ready { background: var(--yellow); color: var(--black); }
+    .badge-success { background: #15803d; color: #ffffff; }
+    .badge-update { background: #0284c7; color: #ffffff; }
+    .badge-danger { background: #b91c1c; color: #ffffff; }
+
+    /* Button Actions */
+    .buttons-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .lucide-icon {
+      display: inline-block;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+
+    /* 1. Primary Install Button */
+    .btn-main {
+      width: 100%;
+      background: var(--yellow);
+      color: var(--black);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 900;
+      padding: 12px;
+      cursor: pointer;
+      border: 3px solid var(--black);
+      box-shadow: 3px 3px 0px var(--black);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.1s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-main:hover:not(:disabled) {
+      transform: translate(-1px, -1px);
+      box-shadow: 4px 4px 0px var(--black);
+    }
+
+    .btn-main:active:not(:disabled) {
+      transform: translate(1px, 1px);
+      box-shadow: 2px 2px 0px var(--black);
+    }
+
+    .btn-main:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* 2. Check for Updates Button */
+    .btn-check {
+      width: 100%;
+      background: #334155;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 10px;
+      cursor: pointer;
+      border: 2px solid var(--black);
+      box-shadow: 3px 3px 0px var(--black);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.1s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-check:hover:not(:disabled) {
+      background: #475569;
+      transform: translate(-1px, -1px);
+      box-shadow: 4px 4px 0px var(--black);
+    }
+
+    .btn-check:active:not(:disabled) {
+      transform: translate(1px, 1px);
+      box-shadow: 2px 2px 0px var(--black);
+    }
+
+    .btn-check:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* 3. Update Extension Button (Conditional: Only visible when update available) */
+    .btn-update {
+      width: 100%;
+      background: #0284c7;
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 900;
+      padding: 11px;
+      cursor: pointer;
+      border: 3px solid var(--black);
+      box-shadow: 3px 3px 0px var(--black);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.1s ease;
+      display: none; /* Hidden by default; appears when update found */
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .btn-update:hover:not(:disabled) {
+      background: #0369a1;
+      transform: translate(-1px, -1px);
+      box-shadow: 4px 4px 0px var(--black);
+    }
+
+    .btn-update:active:not(:disabled) {
+      transform: translate(1px, 1px);
+      box-shadow: 2px 2px 0px var(--black);
+    }
+
+    .btn-update:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Chrome Activation Card */
+    .activation-card {
+      background: #070d18;
+      border: 2px solid var(--black);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 3px 3px 0px var(--black);
+    }
+
+    .step-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--yellow);
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .path-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .path-input {
+      flex: 1;
+      background: #000;
+      border: 1px solid #334155;
+      color: #38bdf8;
+      padding: 7px 9px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .btn-copy {
+      background: #334155;
+      color: var(--text);
+      border: 1.5px solid var(--black);
+      padding: 7px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-copy:hover {
+      background: #475569;
+    }
+
+    .btn-chrome {
+      width: 100%;
+      background: #ffffff;
+      color: var(--black);
+      border: 2px solid var(--black);
+      font-size: 11px;
+      font-weight: 800;
+      padding: 9px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 2px 2px 0px var(--black);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .btn-chrome:hover {
+      background: #f1f5f9;
+    }
+
+    .steps-list {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      padding-left: 18px;
+    }
+
+    .steps-list strong {
+      color: var(--text);
+    }
+
+    /* Status Bar */
+    .status-toast {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 2px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo-badge">404</div>
+      <div class="header-text">
+        <h1>Swayam404 Installer</h1>
+        <p>Extension Setup & Release Synchronization</p>
+      </div>
+    </div>
+
+    <!-- Main Action Card -->
+    <div class="action-card">
+      <div class="status-row">
+        <div>
+          <div class="status-title">Current Installation</div>
+          <div id="status-desc" style="font-size: 13px; font-weight: 800; margin-top: 2px;">Checking status...</div>
+        </div>
+        <span class="badge badge-ready" id="status-badge">READY</span>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="buttons-container">
+        <!-- 1. Install Extension Button -->
+        <button type="button" class="btn-main" id="btn-install" onclick="handleInstall()">
+          <svg class="lucide-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" x2="12" y1="15" y2="3"/>
+          </svg>
+          <span id="btn-install-text">Install Extension</span>
+        </button>
+
+        <!-- 2. Update Extension Button (Hidden by default; appears when update is available) -->
+        <button type="button" class="btn-update" id="btn-update" onclick="handleUpdate()">
+          <svg class="lucide-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="16 12 12 8 8 12"/>
+            <line x1="12" x2="12" y1="16" y2="8"/>
+          </svg>
+          <span id="btn-update-text">Update Extension</span>
+        </button>
+
+        <!-- 3. Check for Updates Button -->
+        <button type="button" class="btn-check" id="btn-check" onclick="handleCheckUpdates()">
+          <svg class="lucide-icon" id="btn-check-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+            <path d="M21 3v5h-5"/>
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+            <path d="M8 16H3v5"/>
+          </svg>
+          <span id="btn-check-text">Check for Updates</span>
+        </button>
+      </div>
+
+      <div class="status-toast" id="status-toast">Ready. Click 'Check for Updates' to verify GitHub release.</div>
+    </div>
+
+    <!-- Chrome Setup Card -->
+    <div class="activation-card">
+      <div class="step-title">
+        <svg class="lucide-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" x2="12" y1="16" y2="12"/>
+          <line x1="12" x2="12.01" y1="8" y2="8"/>
+        </svg>
+        <span>Chrome Setup (First-Time Only)</span>
+      </div>
+
+      <div class="path-row">
+        <input type="text" class="path-input" id="path-display" readonly value="Downloads/swayam404-extension" />
+        <button type="button" class="btn-copy" id="btn-copy" onclick="copyPath()">
+          <svg class="lucide-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+          </svg>
+          <span>Copy</span>
+        </button>
+      </div>
+
+      <ol class="steps-list">
+        <li>Click <strong>Open Chrome Extensions</strong> below.</li>
+        <li>Turn <strong>Developer mode</strong> ON in the top-right corner.</li>
+        <li>Click <strong>Load unpacked</strong> and select the copied folder in Downloads.</li>
+      </ol>
+
+      <button type="button" class="btn-chrome" onclick="openChromeExtensions()">
+        <svg class="lucide-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/>
+          <line x1="10" x2="21" y1="14" y2="3"/>
+        </svg>
+        <span>Open Chrome Extensions</span>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    let currentStatus = null;
+    let latestCheck = null;
+    let isWorking = false;
+    const GITHUB_REPO = 'atharvgit2005/swayam404-knowledge';
+
+    async function loadStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        currentStatus = data;
+        render(data);
+      } catch (err) {
+        document.getElementById('status-desc').textContent = 'Connecting...';
+      }
+    }
+
+    function render(s) {
+      const badge = document.getElementById('status-badge');
+      const desc = document.getElementById('status-desc');
+      const pathDisplay = document.getElementById('path-display');
+      const btnInstallText = document.getElementById('btn-install-text');
+      const btnUpdate = document.getElementById('btn-update');
+      const btnUpdateText = document.getElementById('btn-update-text');
+
+      // Use user's clean Downloads installation directory
+      pathDisplay.value = s.chromeExtensionPath || s.installDir || 'Downloads/swayam404-extension';
+
+      const installedVer = s.installedVersion;
+      const latestVer = latestCheck?.latestVersion || s.latestRelease?.version;
+      const hasUpdate = Boolean(latestCheck?.updateAvailable);
+
+      if (!s.distBuilt) {
+        badge.textContent = 'READY TO INSTALL';
+        badge.className = 'badge badge-ready';
+        desc.textContent = 'Extension not installed';
+        btnInstallText.textContent = 'Install Extension';
+        btnUpdate.style.display = 'none';
+      } else if (hasUpdate && latestVer) {
+        badge.textContent = `UPDATE AVAILABLE (v${latestVer})`;
+        badge.className = 'badge badge-update';
+        desc.textContent = `Installed: v${installedVer || '1.0.0'} -> New: v${latestVer}`;
+        btnUpdate.style.display = 'flex';
+        btnUpdateText.textContent = `Update to v${latestVer} Now`;
+        btnInstallText.textContent = 'Re-Install / Rebuild';
+      } else {
+        badge.textContent = `INSTALLED (v${installedVer || '1.0.0'})`;
+        badge.className = 'badge badge-success';
+        desc.textContent = `Extension is ready (v${installedVer || '1.0.0'})`;
+        btnInstallText.textContent = 'Re-Install / Rebuild';
+        // Only show update button when an update is available
+        btnUpdate.style.display = 'none';
+      }
+    }
+
+    async function handleCheckUpdates() {
+      if (isWorking) return;
+      isWorking = true;
+
+      const btn = document.getElementById('btn-check');
+      const btnText = document.getElementById('btn-check-text');
+      const toast = document.getElementById('status-toast');
+      const btnUpdate = document.getElementById('btn-update');
+      const btnUpdateText = document.getElementById('btn-update-text');
+
+      btn.disabled = true;
+      btnText.textContent = 'Checking for updates...';
+      toast.textContent = 'Checking GitHub repository for latest release...';
+
+      try {
+        const res = await fetch(`/api/github/check?repo=${encodeURIComponent(GITHUB_REPO)}`);
+        const data = await res.json();
+
+        if (data.latestVersion) {
+          latestCheck = data;
+          if (data.updateAvailable) {
+            toast.textContent = `Update available: v${data.latestVersion}! Click 'Update to v${data.latestVersion} Now' above.`;
+            btnUpdate.style.display = 'flex';
+            btnUpdateText.textContent = `Update to v${data.latestVersion} Now`;
+            document.getElementById('status-badge').textContent = `UPDATE AVAILABLE (v${data.latestVersion})`;
+            document.getElementById('status-badge').className = 'badge badge-update';
+            document.getElementById('status-desc').textContent = `Installed: v${data.currentVersion} -> Latest: v${data.latestVersion}`;
+          } else {
+            btnUpdate.style.display = 'none';
+            toast.textContent = `Up to date. You are running the latest release (v${data.currentVersion}).`;
+            document.getElementById('status-badge').textContent = `UP TO DATE (v${data.currentVersion})`;
+            document.getElementById('status-badge').className = 'badge badge-success';
+            document.getElementById('status-desc').textContent = `Latest release v${data.currentVersion} is active.`;
+          }
+        } else if (data.error) {
+          toast.textContent = `Check note: ${data.error}`;
+        }
+      } catch (err) {
+        toast.textContent = `Could not reach GitHub: ${err.message}.`;
+      } finally {
+        btn.disabled = false;
+        btnText.textContent = 'Check for Updates';
+        isWorking = false;
+      }
+    }
+
+    async function handleUpdate() {
+      if (isWorking) return;
+      isWorking = true;
+
+      const btn = document.getElementById('btn-update');
+      const btnText = document.getElementById('btn-update-text');
+      const toast = document.getElementById('status-toast');
+      btn.disabled = true;
+
+      const targetVersion = latestCheck?.latestVersion || currentStatus?.latestRelease?.version || '1.0.0';
+      btnText.textContent = `Updating to v${targetVersion}...`;
+      toast.textContent = `Downloading and applying update v${targetVersion} from GitHub...`;
+
+      try {
+        if (latestCheck?.zipAsset) {
+          const res = await fetch('/api/github/download-and-apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              repo: latestCheck.repo || GITHUB_REPO,
+              sha256: latestCheck.expectedSha256 || undefined,
+            }),
+          });
+          const json = await res.json();
+          if (json.success) {
+            toast.textContent = `Successfully updated to v${json.version}! Reload extension in Chrome.`;
+            btn.style.display = 'none';
+            latestCheck = null;
+          } else {
+            throw new Error(json.error || 'GitHub apply failed');
+          }
+        } else {
+          const res = await fetch('/api/update/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ version: targetVersion }),
+          });
+          const json = await res.json();
+          if (json.success) {
+            toast.textContent = 'Extension updated successfully! Reload extension in Chrome.';
+            btn.style.display = 'none';
+            latestCheck = null;
+          } else {
+            toast.textContent = `Update result: ${json.error || 'Already on latest'}`;
+          }
+        }
+      } catch (e) {
+        toast.textContent = `Update error: ${e.message}`;
+      } finally {
+        await loadStatus();
+        btn.disabled = false;
+        btnText.textContent = `Update Extension`;
+        isWorking = false;
+      }
+    }
+
+    async function handleInstall() {
+      if (isWorking) return;
+      isWorking = true;
+
+      const btn = document.getElementById('btn-install');
+      const btnText = document.getElementById('btn-install-text');
+      const toast = document.getElementById('status-toast');
+      btn.disabled = true;
+      btnText.textContent = 'Installing...';
+      toast.textContent = 'Installing extension into Downloads/swayam404-extension...';
+
+      try {
+        const res = await fetch('/api/build', { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+          toast.textContent = 'Extension installed successfully! Ready to load in Chrome.';
+        } else {
+          toast.textContent = `Installation failed: ${json.error || 'Error'}`;
+        }
+      } catch (e) {
+        toast.textContent = `Installation error: ${e.message}`;
+      } finally {
+        await loadStatus();
+        btn.disabled = false;
+        isWorking = false;
+      }
+    }
+
+    function copyPath() {
+      const input = document.getElementById('path-display');
+      navigator.clipboard.writeText(input.value);
+      const toast = document.getElementById('status-toast');
+      toast.textContent = 'Path copied to clipboard.';
+    }
+
+    async function openChromeExtensions() {
+      try {
+        await fetch('/api/browser/open-extensions', { method: 'POST' });
+        const toast = document.getElementById('status-toast');
+        toast.textContent = 'Opened chrome://extensions in your default browser.';
+      } catch (e) {
+        window.open('chrome://extensions', '_blank');
+      }
+    }
+
+    loadStatus();
+    setInterval(loadStatus, 2500);
+  </script>
+</body>
+</html>

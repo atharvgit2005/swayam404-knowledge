@@ -108,6 +108,24 @@ async function runBuild() {
     },
   });
 
+  // 5/5: Post-build audit: Chrome reserves names starting with '_' for system use
+  const fs = await import('node:fs');
+  function checkChromeReservedFilenames(dir) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name.startsWith('_') && entry.name !== '_locales' && entry.name !== '_metadata') {
+        throw new Error(
+          `Chrome Extension Violation: "${entry.name}" starts with an underscore "_". Chromium rejects loading extensions with filenames starting with "_"!`
+        );
+      }
+      if (entry.isDirectory()) {
+        checkChromeReservedFilenames(path.join(dir, entry.name));
+      }
+    }
+  }
+  checkChromeReservedFilenames(path.resolve(root, 'dist'));
+  console.log('🛡️  Verified Chrome filename compliance (zero forbidden "_" prefixes).');
+
   console.log('✅ Extension build complete! Packaged in dist/');
 }
 

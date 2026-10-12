@@ -15,6 +15,10 @@ import {
   KnowledgeCoursePack,
   KnowledgeCacheMetadata,
   ContributionProposal,
+  KnowledgeUpdateState,
+  ExtensionUpdateState,
+  LocalUpdaterConfig,
+  DEFAULT_LOCAL_UPDATER_CONFIG,
 } from '@/types';
 import { normalizeQuestionText } from '@/lib/matching/normalizer';
 
@@ -33,6 +37,9 @@ const STORAGE_KEYS = {
   KB_COURSE_PACKS: 'swayam404_kb_course_packs_v1',
   KB_METADATA: 'swayam404_kb_metadata_v1',
   KB_CONTRIBUTION_PROPOSALS: 'swayam404_kb_proposals_v1',
+  KB_UPDATE_STATE: 'swayam404_kb_update_state_v1',
+  EXTENSION_UPDATER_STATE: 'swayam404_ext_updater_state_v1',
+  LOCAL_UPDATER_CONFIG: 'swayam404_local_updater_config_v1',
 };
 
 const DEFAULT_COURSES: Course[] = [
@@ -841,6 +848,25 @@ export class StorageService {
     await setItem(STORAGE_KEYS.KB_MANIFEST, null);
     await setItem(STORAGE_KEYS.KB_COURSE_PACKS, {});
     await setItem(STORAGE_KEYS.KB_METADATA, null);
+    await setItem(STORAGE_KEYS.KB_UPDATE_STATE, null);
+  }
+
+  static async getKnowledgeUpdateState(): Promise<{
+    status: KnowledgeUpdateState;
+    lastError?: string;
+    remoteDatasetVersion?: string;
+    lastChecked?: string;
+  } | null> {
+    return await getItem(STORAGE_KEYS.KB_UPDATE_STATE, null);
+  }
+
+  static async saveKnowledgeUpdateState(state: {
+    status: KnowledgeUpdateState;
+    lastError?: string;
+    remoteDatasetVersion?: string;
+    lastChecked?: string;
+  } | null): Promise<void> {
+    await setItem(STORAGE_KEYS.KB_UPDATE_STATE, state);
   }
 
   // --- Community Knowledge Contribution Proposals ---
@@ -866,6 +892,25 @@ export class StorageService {
       STORAGE_KEYS.KB_CONTRIBUTION_PROPOSALS,
       list.filter((p) => p.proposalId !== proposalId)
     );
+  }
+
+  // --- Local Extension Code Updater ---
+
+  static async getExtensionUpdaterState(): Promise<ExtensionUpdateState | null> {
+    return await getItem<ExtensionUpdateState | null>(STORAGE_KEYS.EXTENSION_UPDATER_STATE, null);
+  }
+
+  static async saveExtensionUpdaterState(state: ExtensionUpdateState | null): Promise<void> {
+    await setItem(STORAGE_KEYS.EXTENSION_UPDATER_STATE, state);
+  }
+
+  static async getLocalUpdaterConfig(): Promise<LocalUpdaterConfig> {
+    return await getItem<LocalUpdaterConfig>(STORAGE_KEYS.LOCAL_UPDATER_CONFIG, DEFAULT_LOCAL_UPDATER_CONFIG);
+  }
+
+  static async saveLocalUpdaterConfig(config: Partial<LocalUpdaterConfig>): Promise<void> {
+    const current = await this.getLocalUpdaterConfig();
+    await setItem(STORAGE_KEYS.LOCAL_UPDATER_CONFIG, { ...current, ...config });
   }
 
   static parseWeekNumber(weekStr?: string): number | undefined {

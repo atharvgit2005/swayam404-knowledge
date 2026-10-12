@@ -19,6 +19,8 @@ import {
   KnowledgeSyncOptions,
   KnowledgeResource,
   KnowledgeReviewRecord,
+  KnowledgeUpdateState,
+  KnowledgeUpdateCheckResult,
 } from '@/types/knowledge';
 import { StorageService } from '@/lib/storage';
 import { IKnowledgeLoader } from './client';
@@ -81,6 +83,162 @@ export class KnowledgeCacheService {
   }
 
   /**
+   * Non-destructive preflight check for newer manifest / course packs.
+   * Avoids downloading full packs. Only fetches remote manifest.
+   */
+  static async checkForUpdates(
+    loader: IKnowledgeLoader,
+    repoUrl: string,
+    signal?: AbortSignal
+  ): Promise<KnowledgeUpdateCheckResult> {
+    if (!loader.isConfigured() || !repoUrl.trim()) {
+      return {
+        updateAvailable: false,
+        state: 'unconfigured',
+        changedCourses: [],
+        newCourses: [],
+      };
+    }
+
+    const existingManifest = await this.getCachedManifest();
+    const existingPacks = await this.getCachedCoursePacks();
+    const existingMeta = await this.getCachedMetadata();
+
+    let remoteManifest: KnowledgeManifest | null = null;
+    let notModified = false;
+
+    try {
+      if (typeof loader.fetchManifestConditional === 'function') {
+        const cond = await loader.fetchManifestConditional({
+          etag: existingMeta?.etags?.['manifest.json'],
+          lastModified: existingMeta?.lastModified?.['manifest.json'],
+          signal,
+        });
+        notModified = cond.notModified;
+        remoteManifest = cond.data || (notModified ? existingManifest : null);
+      } else {
+        remoteManifest = await loader.fetchManifest(signal);
+      }
+    } catch (err: unknown) {
+      const e = err as Error;
+      const isOffline =
+        (err as { isNetworkError?: boolean })?.isNetworkError ||
+        (err as { isTimeout?: boolean })?.isTimeout ||
+        e.message.toLowerCase().includes('fetch') ||
+        e.message.toLowerCase().includes('network') ||
+        e.message.toLowerCase().includes('econnrefused');
+
+      const offlineState: KnowledgeUpdateState = isOffline ? 'offline' : 'update-failed';
+      await StorageService.saveKnowledgeUpdateState({
+        status: offlineState,
+        lastError: e.message,
+        lastChecked: new Date().toISOString(),
+      });
+
+      return {
+        updateAvailable: false,
+        state: offlineState,
+        currentVersion: existingManifest?.datasetVersion,
+        changedCourses: [],
+        newCourses: [],
+        error: e.message,
+        isOffline,
+      };
+    }
+
+    if (notModified && existingManifest) {
+      await StorageService.saveKnowledgeUpdateState({
+        status: 'up-to-date',
+        remoteDatasetVersion: existingManifest.datasetVersion,
+        lastChecked: new Date().toISOString(),
+      });
+      return {
+        updateAvailable: false,
+        state: 'up-to-date',
+        currentVersion: existingManifest.datasetVersion,
+        latestVersion: existingManifest.datasetVersion,
+        changedCourses: [],
+        newCourses: [],
+      };
+    }
+
+    if (!remoteManifest) {
+      await StorageService.saveKnowledgeUpdateState({
+        status: 'update-failed',
+        lastError: 'Could not fetch remote manifest',
+        lastChecked: new Date().toISOString(),
+      });
+      return {
+        updateAvailable: false,
+        state: 'update-failed',
+        currentVersion: existingManifest?.datasetVersion,
+        changedCourses: [],
+        newCourses: [],
+        error: 'Could not fetch remote manifest',
+      };
+    }
+
+    const val = KnowledgeValidator.validateManifest(remoteManifest);
+    if (!val.isValid || !val.data) {
+      await StorageService.saveKnowledgeUpdateState({
+        status: 'update-failed',
+        lastError: 'Remote manifest failed validation',
+        lastChecked: new Date().toISOString(),
+      });
+      return {
+        updateAvailable: false,
+        state: 'update-failed',
+        currentVersion: existingManifest?.datasetVersion,
+        changedCourses: [],
+        newCourses: [],
+        error: 'Remote manifest failed validation',
+      };
+    }
+
+    const validatedRemote = val.data;
+    const currentVersion = existingManifest?.datasetVersion;
+    const latestVersion = validatedRemote.datasetVersion;
+
+    const changedCourses: string[] = [];
+    const newCourses: string[] = [];
+
+    for (const c of validatedRemote.courses) {
+      const existingPack = existingPacks[c.courseId];
+      if (!existingPack) {
+        newCourses.push(c.courseId);
+      } else {
+        const hashDiffers =
+          Boolean(c.contentHash) &&
+          Boolean(existingPack.contentHash) &&
+          c.contentHash.toLowerCase() !== existingPack.contentHash!.toLowerCase();
+        const verDiffers = c.coursePackVersion !== existingPack.course.coursePackVersion;
+        if (hashDiffers || verDiffers) {
+          changedCourses.push(c.courseId);
+        }
+      }
+    }
+
+    const versionDiffers = Boolean(currentVersion && latestVersion && currentVersion !== latestVersion);
+    const updateAvailable = !currentVersion || versionDiffers || newCourses.length > 0 || changedCourses.length > 0;
+    const state: KnowledgeUpdateState = updateAvailable ? 'update-available' : 'up-to-date';
+
+    await StorageService.saveKnowledgeUpdateState({
+      status: state,
+      remoteDatasetVersion: latestVersion,
+      lastChecked: new Date().toISOString(),
+    });
+
+    return {
+      updateAvailable,
+      state,
+      currentVersion,
+      latestVersion,
+      changedCourses,
+      newCourses,
+    };
+  }
+
+  /**
    * Public entrypoint for atomic synchronization from remote knowledge repository.
    * Prevents concurrent sync collisions by sharing an active in-flight Promise.
    */
@@ -95,8 +253,37 @@ export class KnowledgeCacheService {
 
     const promise = this.executeSync(loader, repoUrl, optionsOrSignal);
     this.activeSyncPromise = promise;
+
+    // Set downloading state asynchronously without blocking mutex
+    StorageService.saveKnowledgeUpdateState({
+      status: 'downloading',
+      lastChecked: new Date().toISOString(),
+    }).catch(() => {});
     try {
-      return await promise;
+      const res = await promise;
+      if (res.success) {
+        await StorageService.saveKnowledgeUpdateState({
+          status: 'updated',
+          remoteDatasetVersion: res.datasetVersion,
+          lastChecked: new Date().toISOString(),
+        });
+      }
+      return res;
+    } catch (syncErr: unknown) {
+      const e = syncErr as Error;
+      const isOffline =
+        (syncErr as { isNetworkError?: boolean })?.isNetworkError ||
+        (syncErr as { isTimeout?: boolean })?.isTimeout ||
+        e.message.toLowerCase().includes('fetch') ||
+        e.message.toLowerCase().includes('network') ||
+        e.message.toLowerCase().includes('econnrefused');
+
+      await StorageService.saveKnowledgeUpdateState({
+        status: isOffline ? 'offline' : 'update-failed',
+        lastError: e.message,
+        lastChecked: new Date().toISOString(),
+      });
+      throw syncErr;
     } finally {
       this.activeSyncPromise = null;
     }
@@ -338,6 +525,26 @@ export class KnowledgeCacheService {
     await StorageService.saveKnowledgeCoursePacks(stagedPacks);
     await StorageService.saveKnowledgeManifest(validatedRemoteManifest);
     await StorageService.saveKnowledgeMetadata(metadata);
+
+    // Auto-register any newly added course entries from the validated remote manifest into StorageService courses
+    try {
+      const currentCourses = await StorageService.getCourses();
+      for (const courseEntry of validatedRemoteManifest.courses) {
+        if (!currentCourses.some((c) => c.id === courseEntry.courseId)) {
+          await StorageService.saveCourse({
+            id: courseEntry.courseId,
+            name: courseEntry.courseTitle,
+            code: courseEntry.courseId.toUpperCase(),
+            externalCourseId: courseEntry.courseId,
+            description: `${courseEntry.institution || 'SWAYAM'} · ${courseEntry.provider || 'SWAYAM'} · ${courseEntry.language}`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+    } catch (regErr) {
+      console.warn('[KnowledgeCacheService] Could not auto-register new course:', regErr);
+    }
 
     const hasPartialErrors = Object.keys(courseErrors).length > 0;
     const statusMsg = hasPartialErrors

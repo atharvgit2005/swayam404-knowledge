@@ -164,6 +164,7 @@ OPTION C (System Settings):
 ============================================================
 `;
   fs.writeFileSync(path.join(MAC_DIR, 'HOW TO INSTALL.txt'), macReadme);
+  fs.writeFileSync(path.join(MAC_DIR, 'README.txt'), macReadme);
 
   // ----------------------------------------------------
   // 2. Package Windows Distribution
